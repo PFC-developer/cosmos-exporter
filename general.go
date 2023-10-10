@@ -92,7 +92,9 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 	// registry.MustRegister(generalAnnualProvisions)
 
 	reg.MustRegister(m.latestBlockHeight)
-	reg.MustRegister(m.tokenPrice)
+	if TokenPrice {
+		reg.MustRegister(m.tokenPrice)
+	}
 	reg.MustRegister(m.govVotingPeriodProposals)
 	return m
 
