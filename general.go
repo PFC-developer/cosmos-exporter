@@ -119,18 +119,20 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 
 }
 func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *service) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		chain, err := cosmosdirectory.GetChainByChainID(ChainID)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get chain information")
-			return
-		}
+	if TokenPrice {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			chain, err := cosmosdirectory.GetChainByChainID(ChainID)
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get chain information")
+				return
+			}
 
-		price := chain.GetPriceUSD()
-		metrics.tokenPrice.Set(price)
-	}()
+			price := chain.GetPriceUSD()
+			metrics.tokenPrice.Set(price)
+		}()
+	}
 
 	wg.Add(1)
 	go func() {

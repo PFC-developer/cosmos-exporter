@@ -50,6 +50,7 @@ var (
 	Upgrades   bool
 	Proposals  bool
 	Params     bool
+	TokenPrice bool
 )
 
 type service struct {
@@ -207,6 +208,7 @@ func Execute(_ *cobra.Command, _ []string) {
 		Str("--proposals", fmt.Sprintf("%t", Proposals)).
 		Str("--params", fmt.Sprintf("%t", Params)).
 		Str("--upgrades", fmt.Sprintf("%t", Upgrades)).
+		Str("--price", fmt.Sprintf("%t", TokenPrice)).
 		Msg("Started with following parameters")
 
 	config := sdk.GetConfig()
@@ -381,6 +383,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolVar(&Upgrades, "upgrades", false, "serve upgrade info in the single call to /metrics")
 	rootCmd.PersistentFlags().BoolVar(&Proposals, "proposals", false, "serve active proposal info in the single call to /metrics")
 	rootCmd.PersistentFlags().BoolVar(&Params, "params", false, "serve chain params info in the single call to /metrics")
+	rootCmd.PersistentFlags().BoolVar(&TokenPrice, "price", true, "fetch token price")
 	rootCmd.PersistentFlags().StringSliceVar(&Wallets, "wallets", nil, "serve info about passed wallets")
 	rootCmd.PersistentFlags().StringSliceVar(&Validators, "validators", nil, "serve info about passed validators")
 
