@@ -13,7 +13,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
+	query "github.com/cosmos/cosmos-sdk/types/query"
+	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -232,33 +233,46 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			context.Background(),
 			&banktypes.QueryTotalSupplyRequest{},
 		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get bank total supply")
-			return
-		}
-
-		sublogger.Debug().
-			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying bank total supply")
-
-		for _, coin := range response.Supply {
-			if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
-				sublogger.Error().
-					Err(err).
-					Msg("Could not get total supply")
-			} else {
-				metrics.supplyTotalGauge.With(prometheus.Labels{
-					"denom": Denom,
-				}).Set(value / DenomCoefficient)
+		for {
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get bank total supply")
+				return
 			}
+
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying bank total supply")
+
+			for _, coin := range response.Supply {
+				if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get total supply")
+				} else {
+					metrics.supplyTotalGauge.With(prometheus.Labels{
+						"denom": coin.GetDenom(),
+					}).Set(value)
+				}
+			}
+			if response.Pagination.NextKey == nil {
+				break
+			}
+			response, err = bankClient.TotalSupply(
+				context.Background(),
+				&banktypes.QueryTotalSupplyRequest{
+					Pagination: &query.PageRequest{
+						Key: response.Pagination.NextKey,
+					},
+				},
+			)
 		}
 	}()
-	/*
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sublogger.Debug().Msg("Started querying inflation")
-			queryStart := time.Now()
+/*
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sublogger.Debug().Msg("Started querying inflation")
+		queryStart := time.Now()
 
 			mintClient := minttypes.NewQueryClient(s.grpcConn)
 			response, err := mintClient.Inflation(

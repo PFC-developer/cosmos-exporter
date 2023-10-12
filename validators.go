@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 )
 
 func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +107,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "1 if the Cosmos-based blockchain validator is in active set, 0 if no",
 			ConstLabels: ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{"address", "pubkey_hash", "moniker"},
 	)
 
 	registry := prometheus.NewRegistry()
@@ -131,23 +134,35 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		queryStart := time.Now()
 
 		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
-		validatorsResponse, err := stakingClient.Validators(
-			context.Background(),
-			&stakingtypes.QueryValidatorsRequest{
-				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+
+		offset := uint64(0)
+		for {
+			validatorsResponse, err := stakingClient.Validators(
+				context.Background(),
+				&stakingtypes.QueryValidatorsRequest{
+					Pagination: &querytypes.PageRequest{
+						Limit: Limit,
+						Offset: offset,
+					},
 				},
-			},
-		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get validators")
-			return
+			)
+
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get validators")
+				return
+			}
+
+			validatorsOnPage := validatorsResponse.GetValidators()
+			if validatorsResponse == nil || len(validatorsOnPage) == 0 {
+				break
+			}
+			validators = append(validators, validatorsOnPage...)
+			offset = uint64(len(validators))
 		}
 
 		sublogger.Debug().
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validators")
-		validators = validatorsResponse.Validators
 
 		// sorting by delegator shares to display rankings (unbonded go last)
 		sort.Slice(validators, func(i, j int) bool {
@@ -215,11 +230,12 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
-	sublogger.Debug().
+	sublogger.Info().
 		Int("signingLength", len(signingInfos)).
 		Int("validatorsLength", len(validators)).
 		Msg("Validators info")
 
+	activeValidators := 0
 	for index, validator := range validators {
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		rate, err := strconv.ParseFloat(validator.Commission.CommissionRates.Rate.String(), 64)
@@ -369,7 +385,33 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 				Str("address", validator.OperatorAddress).
 				Msg("Validator is not active, not returning missed blocks amount.")
 		}
+
+		validatorsRankGauge.With(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+		}).Set(float64(index + 1))
+
+		if validatorSetLength != 0 {
+			// golang doesn't have a ternary operator, so we have to stick with this ugly solution
+			active := float64(1)
+
+			if validator.Jailed {
+				active = 0
+			}
+
+			if activeValidators == int(validatorSetLength) {
+				active = 0
+			}
+			activeValidators += int(active)
+
+			validatorsIsActiveGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey.Bytes())),
+			}).Set(active)
+		}
 	}
+	sublogger.Info().Int("activeValidators", activeValidators).Msg("Active validators")
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)

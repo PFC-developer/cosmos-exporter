@@ -26,7 +26,7 @@ var (
 	NodeAddress   string
 	TendermintRPC string
 	LogLevel      string
-	JsonOutput    bool
+	JSONOutput    bool
 	Limit         uint64
 
 	Prefix                    string
@@ -36,6 +36,8 @@ var (
 	ValidatorPubkeyPrefix     string
 	ConsensusNodePrefix       string
 	ConsensusNodePubkeyPrefix string
+
+	BankTransferThreshold float64
 
 	ChainID          string
 	ConstLabels      map[string]string
@@ -94,45 +96,7 @@ var rootCmd = &cobra.Command{
 		})
 
 		setBechPrefixes(cmd)
-		/*
-			SingleReq, err := cmd.Flags().GetBool("single")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
 
-			Oracle, err := cmd.Flags().GetBool("oracle")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-			Upgrades, err := cmd.Flags().GetBool("upgrades")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-			Proposals, err := cmd.Flags().GetBool("proposals")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-
-			Params, err := cmd.Flags().GetBool("params")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-			Wallets, err := cmd.Flags().GetStringArray("wallets")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-			Validators, err := cmd.Flags().GetStringArray("validators")
-			if err != nil {
-				log.Fatal().Err(err).Msg("Could not set flag")
-				return err
-			}
-		*/
 		return nil
 	},
 	Run: Execute,
@@ -182,7 +146,7 @@ func Execute(_ *cobra.Command, _ []string) {
 		log.Fatal().Err(err).Msg("Could not parse log level")
 	}
 
-	if JsonOutput {
+	if JSONOutput {
 		log = zerolog.New(os.Stdout).With().Timestamp().Logger()
 	}
 
@@ -241,6 +205,12 @@ func Execute(_ *cobra.Command, _ []string) {
 	}
 	s.setChainID()
 	s.setDenom()
+	eventCollector, err := NewEventCollector(TendermintRPC, log, BankTransferThreshold)
+	if err != nil {
+		panic(err)
+	}
+	eventCollector.Start(cmd.Context())
+
 	s.Params = Params
 	s.Wallets = Wallets
 	s.Validators = Validators
@@ -262,6 +232,13 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
+	http.HandleFunc("/metrics/oracle", func(w http.ResponseWriter, r *http.Request) {
+		OracleMetricHandler(w, r, s.grpcConn)
+	})
+
+	http.HandleFunc("/metrics/event", func(w http.ResponseWriter, r *http.Request) {
+		eventCollector.StreamHandler(w, r)
+	})
 
 	log.Info().Str("address", ListenAddress).Msg("Listening")
 	err = http.ListenAndServe(ListenAddress, nil)
@@ -368,7 +345,7 @@ func main() {
 	rootCmd.PersistentFlags().StringVar(&LogLevel, "log-level", "info", "Logging level")
 	rootCmd.PersistentFlags().Uint64Var(&Limit, "limit", 1000, "Pagination limit for gRPC requests")
 	rootCmd.PersistentFlags().StringVar(&TendermintRPC, "tendermint-rpc", "http://localhost:26657", "Tendermint RPC address")
-	rootCmd.PersistentFlags().BoolVar(&JsonOutput, "json", false, "Output logs as JSON")
+	rootCmd.PersistentFlags().BoolVar(&JSONOutput, "json", false, "Output logs as JSON")
 
 	// some networks, like Iris, have the different prefixes for address, validator and consensus node
 	rootCmd.PersistentFlags().StringVar(&Prefix, "bech-prefix", "persistence", "Bech32 global prefix")
@@ -386,6 +363,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVar(&TokenPrice, "price", true, "fetch token price")
 	rootCmd.PersistentFlags().StringSliceVar(&Wallets, "wallets", nil, "serve info about passed wallets")
 	rootCmd.PersistentFlags().StringSliceVar(&Validators, "validators", nil, "serve info about passed validators")
+
+	rootCmd.PersistentFlags().Float64Var(&BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

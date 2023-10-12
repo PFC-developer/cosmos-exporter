@@ -3,7 +3,7 @@
 ![Latest release](https://img.shields.io/github/v/release/solarlabsteam/cosmos-exporter)
 [![Actions Status](https://github.com/solarlabsteam/cosmos-exporter/workflows/test/badge.svg)](https://github.com/solarlabsteam/cosmos-exporter/actions)
 
-cosmos-exporter is a Prometheus scraper that fetches the data from a full node of a Cosmos-based blockchain via gRPC.
+This is a fork of: https://github.com/solarlabsteam/cosmos-exporter 
 
 There are two modes to run this in 'single' mode, and 'detailed' mode
 
@@ -46,7 +46,7 @@ tar xvfz cosmos-exporter-*
 ./cosmos-exporter
 ```
 
-That isn't really fascinating, what you probably want to do is to have it running in the background. For that, first of all, we have to copy the file to the system apps folder:
+That's not really interesting, what you probably want to do is to have it running in the background. For that, first of all, we have to copy the file to the system apps folder:
 
 ```sh
 sudo cp ./cosmos-exporter /usr/bin
@@ -193,4 +193,3 @@ In theory, it should work on a Cosmos-based blockchains with cosmos-sdk >= 0.40.
 ## How can I contribute?
 
 Bug reports and feature requests are always welcome! If you want to contribute, feel free to open issues or PRs.
-
