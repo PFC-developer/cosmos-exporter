@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -11,49 +11,52 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func (s *service) SingleHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
 	registry := prometheus.NewRegistry()
-	generalMetrics := NewGeneralMetrics(registry)
+	generalMetrics := NewGeneralMetrics(registry, s.Config)
 	var validatorMetrics *ValidatorMetrics
 	var paramsMetrics *ParamsMetrics
 	var upgradeMetrics *UpgradeMetrics
 	var walletMetrics *WalletMetrics
-	var kujiOracleMetrics *KujiMetrics
+	//var kujiOracleMetrics *KujiMetrics
 	var proposalMetrics *ProposalsMetrics
 
 	if len(s.Validators) > 0 {
-		validatorMetrics = NewValidatorMetrics(registry)
+		validatorMetrics = NewValidatorMetrics(registry, s.Config)
 	}
 	if len(s.Wallets) > 0 {
-		walletMetrics = NewWalletMetrics(registry)
+		walletMetrics = NewWalletMetrics(registry, s.Config)
 	}
 	if s.Params {
-		paramsMetrics = NewParamsMetrics(registry)
+		paramsMetrics = NewParamsMetrics(registry, s.Config)
 	}
 	if s.Upgrades {
-		upgradeMetrics = NewUpgradeMetrics(registry)
+		upgradeMetrics = NewUpgradeMetrics(registry, s.Config)
 	}
-	if s.Oracle {
-		kujiOracleMetrics = NewKujiMetrics(registry)
-	}
+	/*
+		if s.Oracle {
+			kujiOracleMetrics = NewKujiMetrics(registry, s.Config)
+		}
+	*/
+
 	if s.Proposals {
-		proposalMetrics = NewProposalsMetrics(registry)
+		proposalMetrics = NewProposalsMetrics(registry, s.Config)
 	}
 
 	var wg sync.WaitGroup
 
-	getGeneralMetrics(&wg, &sublogger, generalMetrics, s)
+	GetGeneralMetrics(&wg, &sublogger, generalMetrics, s, s.Config)
 	if paramsMetrics != nil {
-		getParamsMetrics(&wg, &sublogger, paramsMetrics, s)
+		GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 	}
 	if upgradeMetrics != nil {
-		getUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s)
+		GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 	}
 	if len(s.Validators) > 0 {
 		// use 2 groups.
@@ -76,14 +79,16 @@ func (s *service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					defer val_wg.Done()
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
-					getValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, valAddress)
+					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
 				}()
+				/*
+					if s.Oracle {
+						sublogger.Debug().Str("address", validator).Msg("Fetching Kujira details")
 
-				if s.Oracle {
-					sublogger.Debug().Str("address", validator).Msg("Fetching Kujira details")
+						getKujiMetrics(&wg, &sublogger, kujiOracleMetrics, s, s.Config, valAddress)
+					}
 
-					getKujiMetrics(&wg, &sublogger, kujiOracleMetrics, s, valAddress)
-				}
+				*/
 			}
 		}
 		val_wg.Wait()
@@ -97,14 +102,12 @@ func (s *service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Err(err).
 					Msg("Could not get wallet address")
 			} else {
-				getWalletMetrics(&wg, &sublogger, walletMetrics, s, accAddress, false)
+				GetWalletMetrics(&wg, &sublogger, walletMetrics, s, s.Config, accAddress, false)
 			}
 		}
 	}
 	if s.Proposals {
-
-		getProposalsMetrics(&wg, &sublogger, proposalMetrics, s, true)
-
+		GetProposalsMetrics(&wg, &sublogger, proposalMetrics, s, s.Config, true)
 	}
 	wg.Wait()
 
@@ -113,6 +116,7 @@ func (s *service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 	sublogger.Info().
 		Str("method", "GET").
 		Str("endpoint", "/metrics").
+		Str("type", "regular").
 		Float64("request-time", time.Since(requestStart).Seconds()).
 		Msg("Request processed")
 }

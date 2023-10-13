@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -40,14 +41,14 @@ type ValidatorExtendedMetrics struct {
 	isActiveGauge *prometheus.GaugeVec
 }
 
-func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
+func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorMetrics {
 	m := &ValidatorMetrics{
 
 		tokensGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_tokens",
 				Help:        "Tokens of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom"},
 		),
@@ -56,7 +57,7 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_delegators_shares",
 				Help:        "Delegators shares of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom"},
 		),
@@ -65,7 +66,7 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_commission_rate",
 				Help:        "Commission rate of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -74,7 +75,7 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_status",
 				Help:        "Status of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -83,7 +84,7 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_jailed",
 				Help:        "1 if the Cosmos-based blockchain validator is jailed, 0 if no",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -91,7 +92,7 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_missed_blocks",
 				Help:        "Missed blocks of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -107,14 +108,14 @@ func NewValidatorMetrics(reg prometheus.Registerer) *ValidatorMetrics {
 	return m
 }
 
-func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMetrics {
+func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorExtendedMetrics {
 	m := &ValidatorExtendedMetrics{
 
 		delegationsGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_delegations",
 				Help:        "Delegations of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom", "delegated_by"},
 		),
@@ -123,7 +124,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_commission",
 				Help:        "Commission of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom"},
 		),
@@ -131,7 +132,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_rewards",
 				Help:        "Rewards of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom"},
 		),
@@ -140,7 +141,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_unbondings",
 				Help:        "Unbondings of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom", "unbonded_by"},
 		),
@@ -149,7 +150,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_redelegations",
 				Help:        "Redelegations of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker", "denom", "redelegated_by", "redelegated_to"},
 		),
@@ -158,7 +159,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_rank",
 				Help:        "Rank of the Cosmos-based blockchain validator",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -167,7 +168,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_active",
 				Help:        "1 if the Cosmos-based blockchain validator is in active set, 0 if no",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "moniker"},
 		),
@@ -185,7 +186,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer) *ValidatorExtendedMe
 
 	return m
 }
-func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *service, validatorAddress sdk.ValAddress) *stakingtypes.QueryValidatorResponse {
+func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress) *stakingtypes.QueryValidatorResponse {
 
 	// doing this not in goroutine as we'll need the moniker value later
 	sublogger.Debug().
@@ -193,7 +194,7 @@ func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		Msg("Started querying validator")
 	validatorQueryStart := time.Now()
 
-	stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+	stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 	validator, err := stakingClient.Validator(
 		context.Background(),
 		&stakingtypes.QueryValidatorRequest{ValidatorAddr: validatorAddress.String()},
@@ -220,8 +221,8 @@ func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		metrics.tokensGauge.With(prometheus.Labels{
 			"address": validator.Validator.OperatorAddress,
 			"moniker": validator.Validator.Description.Moniker,
-			"denom":   Denom,
-		}).Set(value / DenomCoefficient)
+			"denom":   config.Denom,
+		}).Set(value / config.DenomCoefficient)
 	}
 
 	// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -234,8 +235,8 @@ func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		metrics.delegatorSharesGauge.With(prometheus.Labels{
 			"address": validator.Validator.OperatorAddress,
 			"moniker": validator.Validator.Description.Moniker,
-			"denom":   Denom,
-		}).Set(value / DenomCoefficient)
+			"denom":   config.Denom,
+		}).Set(value / config.DenomCoefficient)
 	}
 
 	// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -297,7 +298,7 @@ func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				Msg("Could not get validator pubkey")
 		}
 
-		slashingClient := slashingtypes.NewQueryClient(s.grpcConn)
+		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
 			&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
@@ -328,7 +329,7 @@ func getValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 
 	return validator
 }
-func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *service, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {
+func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {
 
 	wg.Add(1)
 	go func() {
@@ -339,13 +340,13 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator delegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.ValidatorDelegations(
 			context.Background(),
 			&stakingtypes.QueryValidatorDelegationsRequest{
 				ValidatorAddr: validatorAddress.String(),
 				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+					Limit: config.Limit,
 				},
 			},
 		)
@@ -373,9 +374,9 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 				metrics.delegationsGauge.With(prometheus.Labels{
 					"moniker":      moniker,
 					"address":      delegation.Delegation.ValidatorAddress,
-					"denom":        Denom,
+					"denom":        config.Denom,
 					"delegated_by": delegation.Delegation.DelegatorAddress,
-				}).Set(value / DenomCoefficient)
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 	}()
@@ -389,7 +390,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator commission")
 		queryStart := time.Now()
 
-		distributionClient := distributiontypes.NewQueryClient(s.grpcConn)
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
 		distributionRes, err := distributionClient.ValidatorCommission(
 			context.Background(),
 			&distributiontypes.QueryValidatorCommissionRequest{ValidatorAddress: validatorAddress.String()},
@@ -419,8 +420,8 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 				metrics.commissionGauge.With(prometheus.Labels{
 					"address": validatorAddress.String(),
 					"moniker": moniker,
-					"denom":   Denom,
-				}).Set(value / DenomCoefficient)
+					"denom":   config.Denom,
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 	}()
@@ -434,7 +435,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator rewards")
 		queryStart := time.Now()
 
-		distributionClient := distributiontypes.NewQueryClient(s.grpcConn)
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
 		distributionRes, err := distributionClient.ValidatorOutstandingRewards(
 			context.Background(),
 			&distributiontypes.QueryValidatorOutstandingRewardsRequest{ValidatorAddress: validatorAddress.String()},
@@ -463,8 +464,8 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 				metrics.rewardsGauge.With(prometheus.Labels{
 					"address": validatorAddress.String(),
 					"moniker": moniker,
-					"denom":   Denom,
-				}).Set(value / DenomCoefficient)
+					"denom":   config.Denom,
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 	}()
@@ -478,7 +479,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator unbonding delegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.ValidatorUnbondingDelegations(
 			context.Background(),
 			&stakingtypes.QueryValidatorUnbondingDelegationsRequest{ValidatorAddr: validatorAddress.String()},
@@ -513,9 +514,9 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			metrics.unbondingsGauge.With(prometheus.Labels{
 				"address":     unbonding.ValidatorAddress,
 				"moniker":     moniker,
-				"denom":       Denom, // unbonding does not have denom in response for some reason
+				"denom":       config.Denom, // unbonding does not have denom in response for some reason
 				"unbonded_by": unbonding.DelegatorAddress,
-			}).Set(sum / DenomCoefficient)
+			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
 
@@ -528,7 +529,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator redelegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.Redelegations(
 			context.Background(),
 			&stakingtypes.QueryRedelegationsRequest{SrcValidatorAddr: validatorAddress.String()},
@@ -563,10 +564,10 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			metrics.redelegationsGauge.With(prometheus.Labels{
 				"address":        redelegation.Redelegation.ValidatorSrcAddress,
 				"moniker":        moniker,
-				"denom":          Denom, // redelegation does not have denom in response for some reason
+				"denom":          config.Denom, // redelegation does not have denom in response for some reason
 				"redelegated_by": redelegation.Redelegation.DelegatorAddress,
 				"redelegated_to": redelegation.Redelegation.ValidatorDstAddress,
-			}).Set(sum / DenomCoefficient)
+			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
 
@@ -579,12 +580,12 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Started querying validator other validators")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.Validators(
 			context.Background(),
 			&stakingtypes.QueryValidatorsRequest{
 				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+					Limit: config.Limit,
 				},
 			},
 		)
@@ -682,9 +683,9 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 	}()
 
 }
-func (s *service) ValidatorHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ValidatorHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
@@ -699,13 +700,13 @@ func (s *service) ValidatorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registry := prometheus.NewRegistry()
-	validatorMetrics := NewValidatorMetrics(registry)
-	validatorExtendedMetrics := NewValidatorExtendedMetrics(registry)
+	validatorMetrics := NewValidatorMetrics(registry, s.Config)
+	validatorExtendedMetrics := NewValidatorExtendedMetrics(registry, s.Config)
 	var wg sync.WaitGroup
 
-	validator := getValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, myAddress)
+	validator := GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, myAddress)
 	if validator != nil {
-		getValidatorExtendedMetrics(&wg, &sublogger, validatorExtendedMetrics, s, myAddress, validator.Validator.Description.Moniker, validator)
+		getValidatorExtendedMetrics(&wg, &sublogger, validatorExtendedMetrics, s, s.Config, myAddress, validator.Validator.Description.Moniker, validator)
 	}
 
 	wg.Wait()

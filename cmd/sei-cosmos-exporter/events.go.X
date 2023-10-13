@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"main/pkg/exporter"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -15,9 +16,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
-	tmrpceventstream "github.com/tendermint/tendermint/rpc/client/eventstream"
+	//tmrpceventstream "github.com/tendermint/tendermint/rpc/client/eventstream"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	//"github.com/tendermint/tendermint/rpc/coretypes"
 	tmjsonclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -39,13 +40,13 @@ type EventCollector struct {
 	BankTransferThreshold float64
 }
 
-func NewEventCollector(tmRPC string, logger zerolog.Logger, bankTransferThreshold float64) (*EventCollector, error) {
+func NewEventCollector(tmRPC string, logger zerolog.Logger, bankTransferThreshold float64, config *exporter.ServiceConfig) (*EventCollector, error) {
 	httpClient, err := tmjsonclient.DefaultHTTPClient(tmRPC)
 	if err != nil {
 		return nil, err
 	}
 	// no timeout because we will continue fetching events continuously
-	rpcClient, err := rpchttp.NewWithClient(tmRPC, httpClient)
+	rpcClient, err := rpchttp.NewWithClient(tmRPC, "/", httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func NewEventCollector(tmRPC string, logger zerolog.Logger, bankTransferThreshol
 		prometheus.GaugeOpts{
 			Name:        "cosmos_bank_transfer_amount",
 			Help:        "Number of tokens transferred in a transfer message",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"denom", "sender", "recipient"},
 	)
@@ -68,7 +69,7 @@ func NewEventCollector(tmRPC string, logger zerolog.Logger, bankTransferThreshol
 func (s EventCollector) Start(
 	ctx context.Context,
 ) error {
-	if err := s.rpcClient.Start(ctx); err != nil {
+	if err := s.rpcClient.Start( /*ctx*/ ); err != nil {
 		return err
 	}
 	s.logger.Info().Msg("Starting StreamCollector")

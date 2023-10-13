@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -13,8 +13,8 @@ type ChainStatus struct {
 	status *coretypes.ResultStatus
 }
 
-func NewChainStatus() (ChainStatus, error) {
-	client, err := tmrpc.New(TendermintRPC, "/websocket")
+func NewChainStatus(config *ServiceConfig) (ChainStatus, error) {
+	client, err := tmrpc.New(config.TendermintRPC, "/websocket")
 	if err != nil {
 		return ChainStatus{}, err
 	}

@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -35,121 +35,125 @@ type ParamsMetrics struct {
 	communityTaxGauge         prometheus.Gauge
 }
 
-func NewParamsMetrics(reg prometheus.Registerer) *ParamsMetrics {
+func NewParamsMetrics(reg prometheus.Registerer, config *ServiceConfig) *ParamsMetrics {
 	m := &ParamsMetrics{
 		maxValidatorsGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_max_validators",
 				Help:        "Active set length",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		unbondingTimeGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_unbonding_time",
 				Help:        "Unbonding time, in seconds",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		blocksPerYearGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_blocks_per_year",
 				Help:        "Block per year",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		goalBondedGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_goal_bonded",
 				Help:        "Goal bonded",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		inflationMinGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_inflation_min",
 				Help:        "Min inflation",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		inflationMaxGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_inflation_max",
 				Help:        "Max inflation",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		inflationRateChangeGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_inflation_rate_change",
 				Help:        "Inflation rate change",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		downtimeJailDurationGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_downtime_jail_duration",
 				Help:        "Downtime jail duration, in seconds",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		minSignedPerWindowGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_min_signed_per_window",
 				Help:        "Minimal amount of blocks to sign per window to avoid slashing",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		signedBlocksWindowGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_signed_blocks_window",
 				Help:        "Signed blocks window",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		slashFractionDoubleSign: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_slash_fraction_double_sign",
 				Help:        "% of tokens to be slashed if double signing",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		slashFractionDowntime: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_slash_fraction_downtime",
 				Help:        "% of tokens to be slashed if downtime",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		baseProposerRewardGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_base_proposer_reward",
 				Help:        "Base proposer reward",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		bonusProposerRewardGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_bonus_proposer_reward",
 				Help:        "Bonus proposer reward",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		communityTaxGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_params_community_tax",
 				Help:        "Community tax",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 	}
 
 	reg.MustRegister(m.maxValidatorsGauge)
 	reg.MustRegister(m.unbondingTimeGauge)
-	reg.MustRegister(m.blocksPerYearGauge)
-	reg.MustRegister(m.inflationMinGauge)
-	reg.MustRegister(m.inflationMaxGauge)
-	reg.MustRegister(m.inflationRateChangeGauge)
+	if config.Prefix != "sei" {
+		reg.MustRegister(m.blocksPerYearGauge)
+		reg.MustRegister(m.goalBondedGauge)
+		reg.MustRegister(m.inflationMinGauge)
+		reg.MustRegister(m.inflationMaxGauge)
+		reg.MustRegister(m.inflationRateChangeGauge)
+	}
+
 	reg.MustRegister(m.downtimeJailDurationGauge)
 	reg.MustRegister(m.minSignedPerWindowGauge)
 	reg.MustRegister(m.signedBlocksWindowGauge)
@@ -161,14 +165,14 @@ func NewParamsMetrics(reg prometheus.Registerer) *ParamsMetrics {
 
 	return m
 }
-func getParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ParamsMetrics, s *service) {
+func GetParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ParamsMetrics, s *Service, config *ServiceConfig) {
 
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying global staking params")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		paramsResponse, err := stakingClient.Params(
 			context.Background(),
 			&stakingtypes.QueryParamsRequest{},
@@ -189,70 +193,72 @@ func getParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pa
 	}()
 	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
-		sublogger.Debug().Msg("Started querying global mint params")
-		queryStart := time.Now()
+	if config.Prefix != "sei" {
+		go func() {
+			defer wg.Done()
+			sublogger.Debug().Msg("Started querying global mint params")
+			queryStart := time.Now()
 
-		mintClient := minttypes.NewQueryClient(s.grpcConn)
-		paramsResponse, err := mintClient.Params(
-			context.Background(),
-			&minttypes.QueryParamsRequest{},
-		)
-		if err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not get global mint params")
-			return
-		}
+			mintClient := minttypes.NewQueryClient(s.GrpcConn)
+			paramsResponse, err := mintClient.Params(
+				context.Background(),
+				&minttypes.QueryParamsRequest{},
+			)
+			if err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not get global mint params")
+				return
+			}
 
-		sublogger.Debug().
-			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying global mint params")
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying global mint params")
 
-		metrics.blocksPerYearGauge.Set(float64(paramsResponse.Params.BlocksPerYear))
+			metrics.blocksPerYearGauge.Set(float64(paramsResponse.Params.BlocksPerYear))
 
-		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-		if value, err := strconv.ParseFloat(paramsResponse.Params.GoalBonded.String(), 64); err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not parse goal bonded")
-		} else {
-			metrics.goalBondedGauge.Set(value)
-		}
+			// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
+			if value, err := strconv.ParseFloat(paramsResponse.Params.GoalBonded.String(), 64); err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not parse goal bonded")
+			} else {
+				metrics.goalBondedGauge.Set(value)
+			}
 
-		if value, err := strconv.ParseFloat(paramsResponse.Params.InflationMin.String(), 64); err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not parse inflation min")
-		} else {
-			metrics.inflationMinGauge.Set(value)
-		}
+			if value, err := strconv.ParseFloat(paramsResponse.Params.InflationMin.String(), 64); err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not parse inflation min")
+			} else {
+				metrics.inflationMinGauge.Set(value)
+			}
 
-		if value, err := strconv.ParseFloat(paramsResponse.Params.InflationMax.String(), 64); err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not parse inflation min")
-		} else {
-			metrics.inflationMaxGauge.Set(value)
-		}
+			if value, err := strconv.ParseFloat(paramsResponse.Params.InflationMax.String(), 64); err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not parse inflation min")
+			} else {
+				metrics.inflationMaxGauge.Set(value)
+			}
 
-		if value, err := strconv.ParseFloat(paramsResponse.Params.InflationRateChange.String(), 64); err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not parse inflation rate change")
-		} else {
-			metrics.inflationRateChangeGauge.Set(value)
-		}
-	}()
-	wg.Add(1)
+			if value, err := strconv.ParseFloat(paramsResponse.Params.InflationRateChange.String(), 64); err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not parse inflation rate change")
+			} else {
+				metrics.inflationRateChangeGauge.Set(value)
+			}
+		}()
+		wg.Add(1)
+	}
 
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying global slashing params")
 		queryStart := time.Now()
 
-		slashingClient := slashingtypes.NewQueryClient(s.grpcConn)
+		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		paramsResponse, err := slashingClient.Params(
 			context.Background(),
 			&slashingtypes.QueryParamsRequest{},
@@ -302,7 +308,7 @@ func getParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pa
 		sublogger.Debug().Msg("Started querying global distribution params")
 		queryStart := time.Now()
 
-		distributionClient := distributiontypes.NewQueryClient(s.grpcConn)
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
 		paramsResponse, err := distributionClient.Params(
 			context.Background(),
 			&distributiontypes.QueryParamsRequest{},
@@ -346,18 +352,18 @@ func getParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pa
 	wg.Add(1)
 
 }
-func (s *service) ParamsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ParamsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
 	registry := prometheus.NewRegistry()
-	paramsMetrics := NewParamsMetrics(registry)
+	paramsMetrics := NewParamsMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	getParamsMetrics(&wg, &sublogger, paramsMetrics, s)
+	GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 
 	wg.Wait()
 

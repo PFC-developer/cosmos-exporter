@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -21,13 +21,13 @@ type ProposalsMetrics struct {
 	proposalsGauge *prometheus.GaugeVec
 }
 
-func NewProposalsMetrics(reg prometheus.Registerer) *ProposalsMetrics {
+func NewProposalsMetrics(reg prometheus.Registerer, config *ServiceConfig) *ProposalsMetrics {
 	m := &ProposalsMetrics{
 		proposalsGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_proposals",
 				Help:        "Proposals of Cosmos-based blockchain",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"title", "status", "voting_start_time", "voting_end_time"},
 		),
@@ -35,7 +35,7 @@ func NewProposalsMetrics(reg prometheus.Registerer) *ProposalsMetrics {
 	reg.MustRegister(m.proposalsGauge)
 	return m
 }
-func getProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ProposalsMetrics, s *service, activeOnly bool) {
+func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ProposalsMetrics, s *Service, _ *ServiceConfig, activeOnly bool) {
 
 	wg.Add(1)
 	go func() {
@@ -46,7 +46,7 @@ func getProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 		sublogger.Debug().Msg("Started querying proposals")
 		queryStart := time.Now()
 
-		govClient := govtypes.NewQueryClient(s.grpcConn)
+		govClient := govtypes.NewQueryClient(s.GrpcConn)
 
 		var propReq govtypes.QueryProposalsRequest
 		if activeOnly {
@@ -97,19 +97,19 @@ func getProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 	}()
 
 }
-func (s *service) ProposalsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ProposalsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
 	registry := prometheus.NewRegistry()
-	proposalsMetrics := NewProposalsMetrics(registry)
+	proposalsMetrics := NewProposalsMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
 
-	getProposalsMetrics(&wg, &sublogger, proposalsMetrics, s, false)
+	GetProposalsMetrics(&wg, &sublogger, proposalsMetrics, s, s.Config, false)
 
 	wg.Wait()
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

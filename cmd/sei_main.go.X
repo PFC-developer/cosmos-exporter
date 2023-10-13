@@ -205,12 +205,13 @@ func Execute(_ *cobra.Command, _ []string) {
 	}
 	s.setChainID()
 	s.setDenom()
-	eventCollector, err := NewEventCollector(TendermintRPC, log, BankTransferThreshold)
-	if err != nil {
-		panic(err)
-	}
-	eventCollector.Start(cmd.Context())
-
+	/*
+		eventCollector, err := NewEventCollector(TendermintRPC, log, BankTransferThreshold)
+		if err != nil {
+			panic(err)
+		}
+		eventCollector.Start(cmd.Context())
+	*/
 	s.Params = Params
 	s.Wallets = Wallets
 	s.Validators = Validators
@@ -228,18 +229,25 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/validators", s.ValidatorsHandler)
 	http.HandleFunc("/metrics/params", s.ParamsHandler)
 	http.HandleFunc("/metrics/general", s.GeneralHandler)
-	http.HandleFunc("/metrics/kujira", s.KujiraMetricHandler)
+	if Prefix == "kujira" {
+		http.HandleFunc("/metrics/kujira", s.KujiraMetricHandler)
+	}
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
-	http.HandleFunc("/metrics/oracle", func(w http.ResponseWriter, r *http.Request) {
-		OracleMetricHandler(w, r, s.grpcConn)
-	})
+	/*
+		if Prefix == "sei" {
+			http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
+				OracleMetricHandler(w, r, s.grpcConn)
+			})
+		}
 
-	http.HandleFunc("/metrics/event", func(w http.ResponseWriter, r *http.Request) {
-		eventCollector.StreamHandler(w, r)
-	})
-
+	*/
+	/*
+		http.HandleFunc("/metrics/event", func(w http.ResponseWriter, r *http.Request) {
+			eventCollector.StreamHandler(w, r)
+		})
+	*/
 	log.Info().Str("address", ListenAddress).Msg("Listening")
 	err = http.ListenAndServe(ListenAddress, nil)
 	if err != nil {
