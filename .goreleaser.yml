@@ -16,6 +16,23 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+  - main: ./cmd/cosmos-exporter
+    id: "cosmos-exporter"
+    binary: "cosmos-exporter"
+    goos:
+      - linux
+      - windows
+      - darwin
+  - main: ./cmd/kuji-cosmos-exporter
+    id: "kuji-cosmos-exporter"
+    binary: "kuji-cosmos-exporter"
+    goos:
+      - linux
+      - windows
+      - darwin
+  - main: ./cmd/sei-cosmos-exporter
+    id: "sei-cosmos-exporter"
+    binary: "sei-cosmos-exporter"
     goos:
       - linux
       - windows
