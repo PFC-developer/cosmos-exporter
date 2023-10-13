@@ -1,7 +1,7 @@
 # cosmos-exporter
 
-![Latest release](https://img.shields.io/github/v/release/solarlabsteam/cosmos-exporter)
-[![Actions Status](https://github.com/solarlabsteam/cosmos-exporter/workflows/test/badge.svg)](https://github.com/solarlabsteam/cosmos-exporter/actions)
+![Latest release](https://img.shields.io/github/v/release/pfc-developer/cosmos-exporter)
+[![Actions Status](https://github.com/pfc-developer/cosmos-exporter/workflows/test/badge.svg)](https://github.com/pfc-developer/cosmos-exporter/actions)
 
 This is a fork of: https://github.com/solarlabsteam/cosmos-exporter 
 
@@ -193,3 +193,5 @@ In theory, it should work on a Cosmos-based blockchains with cosmos-sdk >= 0.40.
 ## How can I contribute?
 
 Bug reports and feature requests are always welcome! If you want to contribute, feel free to open issues or PRs.
+
+PFC is also interested in participating in new chains, delegations, and other things to help cosmos chains. Feel free to drop them a line at [pfc.zone](https://pfc.zone)
