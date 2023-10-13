@@ -1434,7 +1434,7 @@
         "allValue": null,
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(cosmos_validator_commission{chain_id=\"$chain_id\"}, moniker)",
+        "definition": "label_values(cosmos_validator_tokens{chain_id=\"$chain_id\"}, moniker)",
         "description": null,
         "error": null,
         "hide": 0,
@@ -1444,7 +1444,7 @@
         "name": "moniker",
         "options": [],
         "query": {
-          "query": "label_values(cosmos_validator_commission{chain_id=\"$chain_id\"}, moniker)",
+          "query": "label_values(cosmos_validator_tokens{chain_id=\"$chain_id\"}, moniker)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,

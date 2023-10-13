@@ -4,9 +4,9 @@ COPY . /app
 
 WORKDIR /app
 
-RUN go build ./cmd/cosmos-exporter -o cosmos-exporter
-RUN go build ./cmd/kuji-cosmos-exporter -o kuiji-cosmos-exporter
-RUN go build ./cmd/sei-cosmos-exporter -o sei-cosmos-exporter
+RUN go build ./cmd/cosmos-exporter
+RUN go build ./cmd/kuji-cosmos-exporter
+RUN go build ./cmd/sei-cosmos-exporter
 
 
 FROM alpine
