@@ -1,0 +1,6 @@
+export BECH_PREFIX=kuji
+export BOND_DENOM=ukuji
+export DENOM_COEFFICIENT=1000000
+export LISTEN_ADDRESS=:64001
+export NODE=http://localhost:9090
+export RPC=http://localhost:26657

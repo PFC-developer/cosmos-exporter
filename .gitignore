@@ -1,5 +1,8 @@
+*.swp
 main
 dist/
 build/
 .gitignore
 /.idea
+env.local
+/*run_it*sh
