@@ -1,10 +1,14 @@
-package main
+package exporter
 
 import (
 	"context"
+	"encoding/hex"
+	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,12 +21,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	crytpocode.RegisterInterfaces(interfaceRegistry)
 
 	requestStart := time.Now()
-
-	sublogger := log.With().
+	config := s.Config
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
@@ -30,7 +35,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_commission",
 			Help:        "Commission of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker"},
 	)
@@ -39,7 +44,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_status",
 			Help:        "Status of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker"},
 	)
@@ -48,7 +53,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_jailed",
 			Help:        "Jailed status of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker"},
 	)
@@ -57,7 +62,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_tokens",
 			Help:        "Tokens of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker", "denom"},
 	)
@@ -66,7 +71,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_delegator_shares",
 			Help:        "Delegator shares of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker", "denom"},
 	)
@@ -75,7 +80,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_min_self_delegation",
 			Help:        "Self declared minimum self delegation shares of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker", "denom"},
 	)
@@ -84,7 +89,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_missed_blocks",
 			Help:        "Missed blocks of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker"},
 	)
@@ -93,7 +98,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_rank",
 			Help:        "Rank of the Cosmos-based blockchain validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
 		[]string{"address", "moniker"},
 	)
@@ -102,9 +107,9 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validators_active",
 			Help:        "1 if the Cosmos-based blockchain validator is in active set, 0 if no",
-			ConstLabels: ConstLabels,
+			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{"address", "pubkey_hash", "moniker"},
 	)
 
 	registry := prometheus.NewRegistry()
@@ -130,24 +135,36 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		sublogger.Debug().Msg("Started querying validators")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
-		validatorsResponse, err := stakingClient.Validators(
-			context.Background(),
-			&stakingtypes.QueryValidatorsRequest{
-				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
+
+		offset := uint64(0)
+		for {
+			validatorsResponse, err := stakingClient.Validators(
+				context.Background(),
+				&stakingtypes.QueryValidatorsRequest{
+					Pagination: &querytypes.PageRequest{
+						Limit:  config.Limit,
+						Offset: offset,
+					},
 				},
-			},
-		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get validators")
-			return
+			)
+
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get validators")
+				return
+			}
+
+			validatorsOnPage := validatorsResponse.GetValidators()
+			if validatorsResponse == nil || len(validatorsOnPage) == 0 {
+				break
+			}
+			validators = append(validators, validatorsOnPage...)
+			offset = uint64(len(validators))
 		}
 
 		sublogger.Debug().
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validators")
-		validators = validatorsResponse.Validators
 
 		// sorting by delegator shares to display rankings (unbonded go last)
 		sort.Slice(validators, func(i, j int) bool {
@@ -167,12 +184,12 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		sublogger.Debug().Msg("Started querying validators signing infos")
 		queryStart := time.Now()
 
-		slashingClient := slashingtypes.NewQueryClient(s.grpcConn)
+		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		signingInfosResponse, err := slashingClient.SigningInfos(
 			context.Background(),
 			&slashingtypes.QuerySigningInfosRequest{
 				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+					Limit: config.Limit,
 				},
 			},
 		)
@@ -195,7 +212,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		sublogger.Debug().Msg("Started querying staking params")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		paramsResponse, err := stakingClient.Params(
 			context.Background(),
 			&stakingtypes.QueryParamsRequest{},
@@ -215,11 +232,12 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
-	sublogger.Debug().
+	sublogger.Info().
 		Int("signingLength", len(signingInfos)).
 		Int("validatorsLength", len(validators)).
 		Msg("Validators info")
 
+	activeValidators := 0
 	for index, validator := range validators {
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		rate, err := strconv.ParseFloat(validator.Commission.CommissionRates.Rate.String(), 64)
@@ -263,8 +281,8 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			validatorsTokensGauge.With(prometheus.Labels{
 				"address": validator.OperatorAddress,
 				"moniker": validator.Description.Moniker,
-				"denom":   Denom,
-			}).Set(value / DenomCoefficient) // a better way to do this is using math/big Div then checking IsInt64
+				"denom":   config.Denom,
+			}).Set(value / config.DenomCoefficient) // a better way to do this is using math/big Div then checking IsInt64
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -277,8 +295,8 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			validatorsDelegatorSharesGauge.With(prometheus.Labels{
 				"address": validator.OperatorAddress,
 				"moniker": validator.Description.Moniker,
-				"denom":   Denom,
-			}).Set(value / DenomCoefficient)
+				"denom":   config.Denom,
+			}).Set(value / config.DenomCoefficient)
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -291,29 +309,8 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			validatorsMinSelfDelegationGauge.With(prometheus.Labels{
 				"address": validator.OperatorAddress,
 				"moniker": validator.Description.Moniker,
-				"denom":   Denom,
-			}).Set(value / DenomCoefficient)
-		}
-
-		validatorsRankGauge.With(prometheus.Labels{
-			"address": validator.OperatorAddress,
-			"moniker": validator.Description.Moniker,
-		}).Set(float64(index + 1))
-
-		if validatorSetLength != 0 {
-			// golang doesn't have a ternary operator, so we have to stick with this ugly solution
-			var active float64
-
-			if index+1 <= int(validatorSetLength) {
-				active = 1
-			} else {
-				active = 0
-			}
-
-			validatorsIsActiveGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
-			}).Set(active)
+				"denom":   config.Denom,
+			}).Set(value / config.DenomCoefficient)
 		}
 
 		err = validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
@@ -344,7 +341,7 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !found {
-			slashingClient := slashingtypes.NewQueryClient(s.grpcConn)
+			slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 			slashingRes, err := slashingClient.SigningInfo(
 				context.Background(),
 				&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
@@ -369,7 +366,33 @@ func (s *service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 				Str("address", validator.OperatorAddress).
 				Msg("Validator is not active, not returning missed blocks amount.")
 		}
+
+		validatorsRankGauge.With(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+		}).Set(float64(index + 1))
+
+		if validatorSetLength != 0 {
+			// golang doesn't have a ternary operator, so we have to stick with this ugly solution
+			active := float64(1)
+
+			if validator.Jailed {
+				active = 0
+			}
+
+			if activeValidators == int(validatorSetLength) {
+				active = 0
+			}
+			activeValidators += int(active)
+
+			validatorsIsActiveGauge.With(prometheus.Labels{
+				"address":     validator.OperatorAddress,
+				"moniker":     validator.Description.Moniker,
+				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey.Bytes())),
+			}).Set(active)
+		}
 	}
+	sublogger.Info().Int("activeValidators", activeValidators).Msg("Active validators")
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)

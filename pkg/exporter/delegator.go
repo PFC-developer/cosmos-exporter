@@ -1,23 +1,22 @@
-package main
+package exporter
 
 import (
 	"context"
-	"net/http"
-	"sync"
-	"time"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
+	"sync"
+	"time"
 )
 
-func (s *service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
@@ -35,7 +34,7 @@ func (s *service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 		prometheus.GaugeOpts{
 			Name:        "cosmos_validator_delegator_total",
 			Help:        "Number of delegators in validator",
-			ConstLabels: ConstLabels,
+			ConstLabels: s.Config.ConstLabels,
 		},
 		[]string{"validator_address"},
 	)
@@ -53,13 +52,13 @@ func (s *service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 			Msg("Started querying delegator")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		delegatorRes, err := stakingClient.ValidatorDelegations(
 			context.Background(),
 			&stakingtypes.QueryValidatorDelegationsRequest{
 				ValidatorAddr: valAddress.String(),
 				Pagination: &querytypes.PageRequest{
-					Limit: Limit,
+					Limit: s.Config.Limit,
 				},
 			},
 		)

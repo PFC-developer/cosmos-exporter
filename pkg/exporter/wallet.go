@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -27,14 +27,14 @@ type WalletExtendedMetrics struct {
 	rewardsGauge      *prometheus.GaugeVec
 }
 
-func NewWalletMetrics(reg prometheus.Registerer) *WalletMetrics {
+func NewWalletMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletMetrics {
 	m := &WalletMetrics{
 
 		balanceGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_balance",
 				Help:        "Balance of the Cosmos-based blockchain wallet",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "denom"},
 		),
@@ -43,13 +43,13 @@ func NewWalletMetrics(reg prometheus.Registerer) *WalletMetrics {
 
 	return m
 }
-func NewWalletExtendedMetrics(reg prometheus.Registerer) *WalletExtendedMetrics {
+func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletExtendedMetrics {
 	m := &WalletExtendedMetrics{
 		delegationGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_delegations",
 				Help:        "Delegations of the Cosmos-based blockchain wallet",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "denom", "delegated_to"},
 		),
@@ -58,7 +58,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer) *WalletExtendedMetrics 
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_redelegations",
 				Help:        "Redlegations of the Cosmos-based blockchain wallet",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "denom", "redelegated_from", "redelegated_to"},
 		),
@@ -67,7 +67,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer) *WalletExtendedMetrics 
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_unbondings",
 				Help:        "Unbondings of the Cosmos-based blockchain wallet",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "denom", "unbonded_from"},
 		),
@@ -76,7 +76,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer) *WalletExtendedMetrics 
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_rewards",
 				Help:        "Rewards of the Cosmos-based blockchain wallet",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"address", "denom", "validator_address"},
 		),
@@ -89,7 +89,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer) *WalletExtendedMetrics 
 
 	return m
 }
-func getWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletMetrics, s *service, address sdk.AccAddress, allBalances bool) {
+func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress, allBalances bool) {
 
 	wg.Add(1)
 	go func() {
@@ -99,7 +99,7 @@ func getWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 			Msg("Started querying balance")
 		queryStart := time.Now()
 
-		bankClient := banktypes.NewQueryClient(s.grpcConn)
+		bankClient := banktypes.NewQueryClient(s.GrpcConn)
 
 		if allBalances {
 			bankRes, err := bankClient.AllBalances(
@@ -132,13 +132,13 @@ func getWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 					metrics.balanceGauge.With(prometheus.Labels{
 						"address": address.String(),
 						"denom":   balance.Denom,
-					}).Set(value / DenomCoefficient)
+					}).Set(value / config.DenomCoefficient)
 				}
 			}
 		} else {
 			bankRes, err := bankClient.Balance(
 				context.Background(),
-				&banktypes.QueryBalanceRequest{Address: address.String(), Denom: Denom},
+				&banktypes.QueryBalanceRequest{Address: address.String(), Denom: config.Denom},
 			)
 
 			if err != nil {
@@ -151,7 +151,7 @@ func getWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 
 			sublogger.Debug().
 				Str("address", address.String()).
-				Str("denom", Denom).
+				Str("denom", config.Denom).
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying balance")
 			balance := bankRes.Balance
@@ -166,14 +166,14 @@ func getWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				metrics.balanceGauge.With(prometheus.Labels{
 					"address": address.String(),
 					"denom":   balance.Denom,
-				}).Set(value / DenomCoefficient)
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 
 	}()
 
 }
-func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletExtendedMetrics, s *service, address sdk.AccAddress) {
+func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletExtendedMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress) {
 
 	wg.Add(1)
 	go func() {
@@ -183,7 +183,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Started querying delegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.DelegatorDelegations(
 			context.Background(),
 			&stakingtypes.QueryDelegatorDelegationsRequest{DelegatorAddr: address.String()},
@@ -211,9 +211,9 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			} else {
 				metrics.delegationGauge.With(prometheus.Labels{
 					"address":      address.String(),
-					"denom":        Denom,
+					"denom":        config.Denom,
 					"delegated_to": delegation.Delegation.ValidatorAddress,
-				}).Set(value / DenomCoefficient)
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 	}()
@@ -226,7 +226,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Started querying unbonding delegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.DelegatorUnbondingDelegations(
 			context.Background(),
 			&stakingtypes.QueryDelegatorUnbondingDelegationsRequest{DelegatorAddr: address.String()},
@@ -260,9 +260,9 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 
 			metrics.unbondingsGauge.With(prometheus.Labels{
 				"address":       unbonding.DelegatorAddress,
-				"denom":         Denom, // unbonding does not have denom in response for some reason
+				"denom":         config.Denom, // unbonding does not have denom in response for some reason
 				"unbonded_from": unbonding.ValidatorAddress,
-			}).Set(sum / DenomCoefficient)
+			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
 
@@ -274,7 +274,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Started querying redelegations")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		stakingRes, err := stakingClient.Redelegations(
 			context.Background(),
 			&stakingtypes.QueryRedelegationsRequest{DelegatorAddr: address.String()},
@@ -308,10 +308,10 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 
 			metrics.redelegationGauge.With(prometheus.Labels{
 				"address":          redelegation.Redelegation.DelegatorAddress,
-				"denom":            Denom, // redelegation does not have denom in response for some reason
+				"denom":            config.Denom, // redelegation does not have denom in response for some reason
 				"redelegated_from": redelegation.Redelegation.ValidatorSrcAddress,
 				"redelegated_to":   redelegation.Redelegation.ValidatorDstAddress,
-			}).Set(sum / DenomCoefficient)
+			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
 
@@ -324,7 +324,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Started querying rewards")
 		queryStart := time.Now()
 
-		distributionClient := distributiontypes.NewQueryClient(s.grpcConn)
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
 		distributionRes, err := distributionClient.DelegationTotalRewards(
 			context.Background(),
 			&distributiontypes.QueryDelegationTotalRewardsRequest{DelegatorAddress: address.String()},
@@ -352,19 +352,19 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				} else {
 					metrics.rewardsGauge.With(prometheus.Labels{
 						"address":           address.String(),
-						"denom":             Denom,
+						"denom":             config.Denom,
 						"validator_address": reward.ValidatorAddress,
-					}).Set(value / DenomCoefficient)
+					}).Set(value / config.DenomCoefficient)
 				}
 			}
 		}
 	}()
 
 }
-func (s *service) WalletHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) WalletHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
@@ -379,12 +379,12 @@ func (s *service) WalletHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registry := prometheus.NewRegistry()
-	walletMetrics := NewWalletMetrics(registry)
-	walletExtendedMetrics := NewWalletExtendedMetrics(registry)
+	walletMetrics := NewWalletMetrics(registry, s.Config)
+	walletExtendedMetrics := NewWalletExtendedMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	getWalletMetrics(&wg, &sublogger, walletMetrics, s, myAddress, true)
-	getWalletExtendedMetrics(&wg, &sublogger, walletExtendedMetrics, s, myAddress)
+	GetWalletMetrics(&wg, &sublogger, walletMetrics, s, s.Config, myAddress, true)
+	getWalletExtendedMetrics(&wg, &sublogger, walletExtendedMetrics, s, s.Config, myAddress)
 	wg.Wait()
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

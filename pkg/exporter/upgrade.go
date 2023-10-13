@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"context"
@@ -18,13 +18,13 @@ type UpgradeMetrics struct {
 	upgradePlanGauge *prometheus.GaugeVec
 }
 
-func NewUpgradeMetrics(reg prometheus.Registerer) *UpgradeMetrics {
+func NewUpgradeMetrics(reg prometheus.Registerer, config *ServiceConfig) *UpgradeMetrics {
 	m := &UpgradeMetrics{
 		upgradePlanGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_upgrade_plan",
 				Help:        "Upgrade plan info in height",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"info", "name", "height", "estimated_time"},
 		),
@@ -32,14 +32,14 @@ func NewUpgradeMetrics(reg prometheus.Registerer) *UpgradeMetrics {
 	reg.MustRegister(m.upgradePlanGauge)
 	return m
 }
-func getUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *service) {
+func GetUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *Service, config *ServiceConfig) {
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		queryStart := time.Now()
 
-		upgradeClient := upgradetypes.NewQueryClient(s.grpcConn)
+		upgradeClient := upgradetypes.NewQueryClient(s.GrpcConn)
 		upgradeRes, err := upgradeClient.CurrentPlan(
 			context.Background(),
 			&upgradetypes.QueryCurrentPlanRequest{},
@@ -65,7 +65,7 @@ func getUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *U
 			return
 		}
 
-		cs, err := NewChainStatus()
+		cs, err := NewChainStatus(config)
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -102,18 +102,18 @@ func getUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *U
 	}()
 
 }
-func (s *service) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
 	registry := prometheus.NewRegistry()
-	upgradeMetrics := NewUpgradeMetrics(registry)
+	upgradeMetrics := NewUpgradeMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	getUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s)
+	GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 
 	wg.Wait()
 

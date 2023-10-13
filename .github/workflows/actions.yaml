@@ -4,16 +4,18 @@ jobs:
   go-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
       - uses: actions/setup-go@v2
       - run: go version
       - run: go mod download
-      - run: go build
+      - run: go build ./cmd/cosmos-exporter
+      - run: go build ./cmd/kuji-cosmos-exporter
+      - run: go build ./cmd/sei-cosmos-exporter
   go-vet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
       - uses: actions/setup-go@v2
       - run: go version
       - run: go mod download
-      - run: go vet
+      - run: go vet cmd/...

@@ -6,6 +6,7 @@ import (
 	oracletypes "github.com/Team-Kujira/core/x/oracle/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
+	"main/pkg/exporter"
 	"net/http"
 	"sync"
 	"time"
@@ -24,13 +25,13 @@ type KujiMetrics struct {
 	votePenaltyCount *prometheus.CounterVec
 }
 
-func NewKujiMetrics(reg prometheus.Registerer) *KujiMetrics {
+func NewKujiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *KujiMetrics {
 	m := &KujiMetrics{
 		votePenaltyCount: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name:        "cosmos_kujira_oracle_vote_miss_count",
 				Help:        "Vote miss count",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"type"},
 		),
@@ -40,7 +41,7 @@ func NewKujiMetrics(reg prometheus.Registerer) *KujiMetrics {
 
 	return m
 }
-func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *KujiMetrics, s *service, validatorAddress sdk.ValAddress) {
+func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *KujiMetrics, s *exporter.Service, _ *exporter.ServiceConfig, validatorAddress sdk.ValAddress) {
 	wg.Add(1)
 
 	go func() {
@@ -48,7 +49,7 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 		sublogger.Debug().Msg("Started querying oracle feeder metrics")
 		queryStart := time.Now()
 
-		oracleClient := oracletypes.NewQueryClient(s.grpcConn)
+		oracleClient := oracletypes.NewQueryClient(s.GrpcConn)
 		response, err := oracleClient.MissCounter(context.Background(), &oracletypes.QueryMissCounterRequest{ValidatorAddr: validatorAddress.String()})
 
 		if err != nil {
@@ -68,10 +69,10 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 
 	}()
 }
-func (s *service) KujiraMetricHandler(w http.ResponseWriter, r *http.Request) {
+func KujiraMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
@@ -85,10 +86,10 @@ func (s *service) KujiraMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	registry := prometheus.NewRegistry()
-	kujiMetrics := NewKujiMetrics(registry)
+	kujiMetrics := NewKujiMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	getKujiMetrics(&wg, &sublogger, kujiMetrics, s, myAddress)
+	getKujiMetrics(&wg, &sublogger, kujiMetrics, s, s.Config, myAddress)
 
 	wg.Wait()
 

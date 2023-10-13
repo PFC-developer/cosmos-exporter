@@ -1,7 +1,8 @@
-package main
+package exporter
 
 import (
 	"context"
+	query "github.com/cosmos/cosmos-sdk/types/query"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
@@ -13,7 +14,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
-
+	//minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -29,27 +30,27 @@ type GeneralMetrics struct {
 	govVotingPeriodProposals prometheus.Gauge
 }
 
-func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
+func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *GeneralMetrics {
 	m := &GeneralMetrics{
 		bondedTokensGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_general_bonded_tokens",
 				Help:        "Bonded tokens",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		notBondedTokensGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_general_not_bonded_tokens",
 				Help:        "Not bonded tokens",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		communityPoolGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_general_community_pool",
 				Help:        "Community pool",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"denom"},
 		),
@@ -57,7 +58,7 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_general_supply_total",
 				Help:        "Total supply",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 			[]string{"denom"},
 		),
@@ -65,21 +66,21 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 			prometheus.GaugeOpts{
 				Name:        "cosmos_latest_block_height",
 				Help:        "Latest block height",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		tokenPrice: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_token_price",
 				Help:        "Cosmos token price",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 		govVotingPeriodProposals: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_gov_voting_period_proposals",
 				Help:        "Voting period proposals",
-				ConstLabels: ConstLabels,
+				ConstLabels: config.ConstLabels,
 			},
 		),
 	}
@@ -92,7 +93,7 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 	// registry.MustRegister(generalAnnualProvisions)
 
 	reg.MustRegister(m.latestBlockHeight)
-	if TokenPrice {
+	if config.TokenPrice {
 		reg.MustRegister(m.tokenPrice)
 	}
 	reg.MustRegister(m.govVotingPeriodProposals)
@@ -120,12 +121,12 @@ func NewGeneralMetrics(reg prometheus.Registerer) *GeneralMetrics {
 	*/
 
 }
-func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *service) {
-	if TokenPrice {
+func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *Service, config *ServiceConfig) {
+	if config.TokenPrice {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			chain, err := cosmosdirectory.GetChainByChainID(ChainID)
+			chain, err := cosmosdirectory.GetChainByChainID(config.ChainID)
 			if err != nil {
 				sublogger.Error().Err(err).Msg("Could not get chain information")
 				return
@@ -143,7 +144,7 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 		queryStart := time.Now()
 
-		status, err := s.tmRPC.Status(context.Background())
+		status, err := s.TmRPC.Status(context.Background())
 		if err != nil {
 			sublogger.Error().Err(err).Msg("Could not status")
 			return
@@ -161,7 +162,7 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		sublogger.Debug().Msg("Started querying staking pool")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.grpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		response, err := stakingClient.Pool(
 			context.Background(),
 			&stakingtypes.QueryPoolRequest{},
@@ -194,7 +195,7 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		sublogger.Debug().Msg("Started querying distribution community pool")
 		queryStart := time.Now()
 
-		distributionClient := distributiontypes.NewQueryClient(s.grpcConn)
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
 		response, err := distributionClient.CommunityPool(
 			context.Background(),
 			&distributiontypes.QueryCommunityPoolRequest{},
@@ -215,8 +216,8 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 					Msg("Could not get community pool coin")
 			} else {
 				metrics.communityPoolGauge.With(prometheus.Labels{
-					"denom": Denom,
-				}).Set(value / DenomCoefficient)
+					"denom": config.Denom,
+				}).Set(value / config.DenomCoefficient)
 			}
 		}
 	}()
@@ -227,30 +228,43 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		sublogger.Debug().Msg("Started querying bank total supply")
 		queryStart := time.Now()
 
-		bankClient := banktypes.NewQueryClient(s.grpcConn)
+		bankClient := banktypes.NewQueryClient(s.GrpcConn)
 		response, err := bankClient.TotalSupply(
 			context.Background(),
 			&banktypes.QueryTotalSupplyRequest{},
 		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get bank total supply")
-			return
-		}
-
-		sublogger.Debug().
-			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying bank total supply")
-
-		for _, coin := range response.Supply {
-			if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
-				sublogger.Error().
-					Err(err).
-					Msg("Could not get total supply")
-			} else {
-				metrics.supplyTotalGauge.With(prometheus.Labels{
-					"denom": Denom,
-				}).Set(value / DenomCoefficient)
+		for {
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get bank total supply")
+				return
 			}
+
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying bank total supply")
+
+			for _, coin := range response.Supply {
+				if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get total supply")
+				} else {
+					metrics.supplyTotalGauge.With(prometheus.Labels{
+						"denom": coin.GetDenom(),
+					}).Set(value)
+				}
+			}
+			if response.Pagination.NextKey == nil {
+				break
+			}
+			response, err = bankClient.TotalSupply(
+				context.Background(),
+				&banktypes.QueryTotalSupplyRequest{
+					Pagination: &query.PageRequest{
+						Key: response.Pagination.NextKey,
+					},
+				},
+			)
 		}
 	}()
 	/*
@@ -260,28 +274,28 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			sublogger.Debug().Msg("Started querying inflation")
 			queryStart := time.Now()
 
-			mintClient := minttypes.NewQueryClient(s.grpcConn)
-			response, err := mintClient.Inflation(
-				context.Background(),
-				&minttypes.QueryInflationRequest{},
-			)
-			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get inflation")
-				return
-			}
+				mintClient := minttypes.NewQueryClient(s.grpcConn)
+				response, err := mintClient.Inflation(
+					context.Background(),
+					&minttypes.QueryInflationRequest{},
+				)
+				if err != nil {
+					sublogger.Error().Err(err).Msg("Could not get inflation")
+					return
+				}
 
-			sublogger.Debug().
-				Float64("request-time", time.Since(queryStart).Seconds()).
-				Msg("Finished querying inflation")
+				sublogger.Debug().
+					Float64("request-time", time.Since(queryStart).Seconds()).
+					Msg("Finished querying inflation")
 
-			if value, err := strconv.ParseFloat(response.Inflation.String(), 64); err != nil {
-				sublogger.Error().
-					Err(err).
-					Msg("Could not get inflation")
-			} else {
-				generalInflationGauge.Set(value)
-			}
-		}()
+				if value, err := strconv.ParseFloat(response.Inflation.String(), 64); err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get inflation")
+				} else {
+					generalInflationGauge.Set(value)
+				}
+			}()
 	*/
 	/*
 		wg.Add(1)
@@ -319,7 +333,7 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying global gov params")
-		govClient := govtypes.NewQueryClient(s.grpcConn)
+		govClient := govtypes.NewQueryClient(s.GrpcConn)
 		proposals, err := govClient.Proposals(context.Background(), &govtypes.QueryProposalsRequest{
 			ProposalStatus: govtypes.StatusVotingPeriod,
 		})
@@ -335,19 +349,19 @@ func getGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 }
 
-func (s *service) GeneralHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Service) GeneralHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
-	sublogger := log.With().
+	sublogger := s.Log.With().
 		Str("request-id", uuid.New().String()).
 		Logger()
 
 	registry := prometheus.NewRegistry()
-	generalMetrics := NewGeneralMetrics(registry)
+	generalMetrics := NewGeneralMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
 
-	getGeneralMetrics(&wg, &sublogger, generalMetrics, s)
+	GetGeneralMetrics(&wg, &sublogger, generalMetrics, s, s.Config)
 
 	wg.Wait()
 
