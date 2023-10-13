@@ -14,11 +14,12 @@ before:
     - go generate ./...
 
 builds:
-  - env:
-      - CGO_ENABLED=0
   - main: ./cmd/cosmos-exporter
     id: "cosmos-exporter"
     binary: "cosmos-exporter"
+    env:
+      - CGO_ENABLED=0
+
     goos:
       - linux
       - windows
@@ -26,6 +27,9 @@ builds:
   - main: ./cmd/kuji-cosmos-exporter
     id: "kuji-cosmos-exporter"
     binary: "kuji-cosmos-exporter"
+    env:
+      - CGO_ENABLED=0
+
     goos:
       - linux
       - windows
@@ -33,6 +37,9 @@ builds:
   - main: ./cmd/sei-cosmos-exporter
     id: "sei-cosmos-exporter"
     binary: "sei-cosmos-exporter"
+    env:
+      - CGO_ENABLED=0
+
     goos:
       - linux
       - windows
