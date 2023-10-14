@@ -2,11 +2,13 @@ package exporter
 
 import (
 	"context"
+	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+
 	"github.com/rs/zerolog"
 	"main/pkg/cosmosdirectory"
 	"math/big"
@@ -26,8 +28,12 @@ type GeneralMetrics struct {
 	communityPoolGauge       *prometheus.GaugeVec
 	supplyTotalGauge         *prometheus.GaugeVec
 	latestBlockHeight        prometheus.Gauge
+	syncing                  prometheus.Gauge
 	tokenPrice               prometheus.Gauge
 	govVotingPeriodProposals prometheus.Gauge
+	// GetNodeInfo
+	applicationVersion *prometheus.GaugeVec
+	defaultNodeInfo    *prometheus.GaugeVec
 }
 
 func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *GeneralMetrics {
@@ -69,6 +75,13 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 				ConstLabels: config.ConstLabels,
 			},
 		),
+		syncing: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_node_syncing",
+				Help:        "Is Node Syncing",
+				ConstLabels: config.ConstLabels,
+			},
+		),
 		tokenPrice: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_token_price",
@@ -83,6 +96,23 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 				ConstLabels: config.ConstLabels,
 			},
 		),
+		// GetNodeInfo
+		applicationVersion: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_node_application_version",
+				Help:        "application version info of the chain",
+				ConstLabels: config.ConstLabels,
+			},
+			[]string{"chain_name", "app_version", "git_commit", "go_version", "cosmos_sdk_version"},
+		),
+		defaultNodeInfo: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_node_default_node_info",
+				Help:        "default node info of the chain",
+				ConstLabels: config.ConstLabels,
+			},
+			[]string{"network", "version", "moniker"},
+		),
 	}
 	reg.MustRegister(m.bondedTokensGauge)
 	reg.MustRegister(m.notBondedTokensGauge)
@@ -93,10 +123,15 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 	// registry.MustRegister(generalAnnualProvisions)
 
 	reg.MustRegister(m.latestBlockHeight)
+	reg.MustRegister(m.syncing)
 	if config.TokenPrice {
 		reg.MustRegister(m.tokenPrice)
 	}
 	reg.MustRegister(m.govVotingPeriodProposals)
+	// nodeInfo
+	reg.MustRegister(m.applicationVersion)
+	reg.MustRegister(m.defaultNodeInfo)
+
 	return m
 
 	/*
@@ -140,22 +175,55 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sublogger.Debug().Msg("Started querying base pool")
+		sublogger.Debug().Msg("Started querying latest block height")
 
 		queryStart := time.Now()
 
-		status, err := s.TmRPC.Status(context.Background())
+		latest, err := s.GetLatestBlock()
 		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not status")
+			sublogger.Error().Err(err).Msg("Could not get latest block height")
 			return
 		}
 
 		sublogger.Debug().
 			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying rpc status")
+			Msg("Finished querying block height")
 
-		metrics.latestBlockHeight.Set(float64(status.SyncInfo.LatestBlockHeight))
+		metrics.latestBlockHeight.Set(latest)
+
 	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sublogger.Debug().Msg("Started querying node syncing")
+
+		queryStart := time.Now()
+
+		serviceClient := tmservice.NewServiceClient(s.GrpcConn)
+
+		response, err := serviceClient.GetSyncing(
+			context.Background(),
+			&tmservice.GetSyncingRequest{},
+		)
+
+		if err != nil {
+			sublogger.Error().Err(err).Msg("Could not get node syncing")
+			return
+		}
+
+		sublogger.Debug().
+			Float64("request-time", time.Since(queryStart).Seconds()).
+			Msg("Finished querying node syncing")
+
+		if response.GetSyncing() {
+			metrics.syncing.Set(float64(1))
+		} else {
+			metrics.syncing.Set(float64(0))
+		}
+
+	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -220,6 +288,44 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sublogger.Debug().Msg("Started querying NodeInfo")
+		queryStart := time.Now()
+
+		serviceClient := tmservice.NewServiceClient(s.GrpcConn)
+		response, err := serviceClient.GetNodeInfo(
+			context.Background(),
+			&tmservice.GetNodeInfoRequest{},
+		)
+
+		if err != nil {
+			sublogger.Error().Err(err).Msg("Could not get tmService NodeInfo")
+			return
+		}
+
+		sublogger.Debug().
+			Float64("request-time", time.Since(queryStart).Seconds()).
+			Msg("Finished querying NodeInfo")
+		application := response.GetApplicationVersion()
+		metrics.applicationVersion.With(prometheus.Labels{
+			"chain_name":         application.Name,
+			"app_version":        application.Version,
+			"git_commit":         application.GitCommit,
+			"go_version":         application.GoVersion,
+			"cosmos_sdk_version": application.CosmosSdkVersion,
+		}).Set(float64(1))
+
+		nodeinfo := response.GetDefaultNodeInfo()
+
+		metrics.defaultNodeInfo.With(prometheus.Labels{
+			"network": nodeinfo.Network,
+			"version": nodeinfo.Version,
+			"moniker": nodeinfo.Moniker,
+		}).Set(float64(1))
+
 	}()
 
 	wg.Add(1)

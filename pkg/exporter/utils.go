@@ -3,9 +3,9 @@ package exporter
 import (
 	"context"
 	"fmt"
+	tmrpc "github.com/tendermint/tendermint/rpc/client/http"
 	"time"
 
-	tmrpc "github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -31,10 +31,6 @@ func NewChainStatus(config *ServiceConfig) (ChainStatus, error) {
 
 func (cs ChainStatus) SyncInfo() coretypes.SyncInfo {
 	return cs.status.SyncInfo
-}
-
-func (cs ChainStatus) LatestBlockHeight() int64 {
-	return cs.SyncInfo().LatestBlockHeight
 }
 
 func (cs ChainStatus) LatestBlockTime() time.Time {

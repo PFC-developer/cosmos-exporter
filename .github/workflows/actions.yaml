@@ -11,6 +11,7 @@ jobs:
       - run: go build ./cmd/cosmos-exporter
       - run: go build ./cmd/kuji-cosmos-exporter
       - run: go build ./cmd/sei-cosmos-exporter
+      - run: go build ./cmd/inj-cosmos-exporter
   go-vet:
     runs-on: ubuntu-latest
     steps:

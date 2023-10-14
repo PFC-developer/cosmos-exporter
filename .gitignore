@@ -6,3 +6,7 @@ build/
 /.idea
 env.local
 /*run_it*sh
+
+# the binaries
+/cosmos-exporter
+/*-cosmos-exporter

@@ -14,6 +14,11 @@ import (
 
 var config exporter.ServiceConfig
 var log = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+var (
+	Peggo        bool
+	LCD          string
+	Orchestrator string
+)
 
 var rootCmd = &cobra.Command{
 	Use:  "cosmos-exporter",
@@ -21,6 +26,7 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.ConfigPath == "" {
 			config.SetBechPrefixes(cmd)
+
 			return nil
 		}
 
@@ -41,7 +47,6 @@ var rootCmd = &cobra.Command{
 				}
 			}
 		})
-
 		config.SetBechPrefixes(cmd)
 
 		return nil
@@ -61,7 +66,11 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	zerolog.SetGlobalLevel(logLevel)
 
-	config.LogConfig(log.Info()).Msg("Started with following parameters")
+	config.LogConfig(log.Info()).
+		Bool("peggo", Peggo).
+		Str("orchestrator", Orchestrator).
+		Str("lcd", LCD).
+		Msg("Started with following parameters")
 
 	sdkconfig := sdk.GetConfig()
 	sdkconfig.SetBech32PrefixForAccount(config.AccountPrefix, config.AccountPubkeyPrefix)
@@ -98,7 +107,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	if config.SingleReq {
 		log.Info().Msg("Starting Single Mode")
-		http.HandleFunc("/metrics", s.SingleHandler)
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { InjSingleHandler(w, r, s) })
 	}
 	http.HandleFunc("/metrics/wallet", s.WalletHandler)
 	http.HandleFunc("/metrics/validator", s.ValidatorHandler)
@@ -109,7 +118,9 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
-
+	if config.Prefix == "inj" {
+		http.HandleFunc("/metrics/injective", func(w http.ResponseWriter, r *http.Request) { InjMetricHandler(w, r, s) })
+	}
 	/*
 		if Prefix == "sei" {
 			http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
@@ -132,6 +143,9 @@ func Execute(_ *cobra.Command, _ []string) {
 
 func main() {
 	config.SetCommonParameters(rootCmd)
+	rootCmd.PersistentFlags().BoolVar(&Peggo, "peggo", false, "serve peggo info in the single call to /metrics")
+	rootCmd.PersistentFlags().StringVar(&LCD, "lcd", "http://localhost:1317", "LCD endpoint")
+	rootCmd.PersistentFlags().StringVar(&Orchestrator, "orchestrator", "inj...", "orchestrator wallet")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")
