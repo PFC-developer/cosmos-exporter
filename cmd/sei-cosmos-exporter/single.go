@@ -24,6 +24,7 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	var paramsMetrics *exporter.ParamsMetrics
 	var upgradeMetrics *exporter.UpgradeMetrics
 	var walletMetrics *exporter.WalletMetrics
+	var seiMetrics *SeiMetrics
 
 	var proposalMetrics *exporter.ProposalsMetrics
 
@@ -41,6 +42,9 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	}
 	if s.Proposals {
 		proposalMetrics = exporter.NewProposalsMetrics(registry, s.Config)
+	}
+	if s.Oracle {
+		seiMetrics = NewSeiMetrics(registry, s.Config)
 	}
 
 	var wg sync.WaitGroup
@@ -77,9 +81,8 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 				}()
 
 				if s.Oracle {
-					sublogger.Debug().Str("address", validator).Msg("Fetching Kujira details")
-
-					//	getKujiMetrics(&wg, &sublogger, kujiOracleMetrics, s, s.Config, valAddress)
+					sublogger.Debug().Str("address", validator).Msg("Fetching SEI details")
+					getSeiMetrics(&wg, &sublogger, seiMetrics, s, s.Config, valAddress)
 				}
 			}
 		}
@@ -101,6 +104,7 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	if s.Proposals {
 		exporter.GetProposalsMetrics(&wg, &sublogger, proposalMetrics, s, s.Config, true)
 	}
+
 	wg.Wait()
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

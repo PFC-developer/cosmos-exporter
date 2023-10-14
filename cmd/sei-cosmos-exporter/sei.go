@@ -16,11 +16,13 @@ import (
 	oracletypes "github.com/sei-protocol/sei-chain/x/oracle/types"
 )
 
-type votePenaltyCounter struct {
-	MissCount    string `json:"miss_count"`
-	AbstainCount string `json:"abstain_count"`
-	SuccessCount string `json:"success_count"`
-}
+/*
+	type votePenaltyCounter struct {
+		MissCount    string `json:"miss_count"`
+		AbstainCount string `json:"abstain_count"`
+		SuccessCount string `json:"success_count"`
+	}
+*/
 type SeiMetrics struct {
 	votePenaltyCount *prometheus.CounterVec
 }
@@ -29,11 +31,11 @@ func NewSeiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *S
 	m := &SeiMetrics{
 		votePenaltyCount: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name:        "cosmos_oracle_vote_penalty_count",
+				Name:        "cosmos_sei_oracle_vote_penalty_count",
 				Help:        "Vote penalty miss count",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"type"},
+			[]string{"type", "validator"},
 		),
 	}
 
@@ -67,9 +69,9 @@ func getSeiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *SeiMe
 		abstainCount := float64(response.VotePenaltyCounter.AbstainCount)
 		successCount := float64(response.VotePenaltyCounter.SuccessCount)
 
-		metrics.votePenaltyCount.WithLabelValues("miss").Add(missCount)
-		metrics.votePenaltyCount.WithLabelValues("abstain").Add(abstainCount)
-		metrics.votePenaltyCount.WithLabelValues("success").Add(successCount)
+		metrics.votePenaltyCount.WithLabelValues("miss", validatorAddress.String()).Add(missCount)
+		metrics.votePenaltyCount.WithLabelValues("abstain", validatorAddress.String()).Add(abstainCount)
+		metrics.votePenaltyCount.WithLabelValues("success", validatorAddress.String()).Add(successCount)
 
 	}()
 

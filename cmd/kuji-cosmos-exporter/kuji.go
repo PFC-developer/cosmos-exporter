@@ -33,7 +33,7 @@ func NewKujiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *
 				Help:        "Vote miss count",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"type"},
+			[]string{"type", "validator"},
 		),
 	}
 
@@ -65,7 +65,7 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 
 		missCount := float64(response.MissCounter)
 
-		metrics.votePenaltyCount.WithLabelValues("miss").Add(missCount)
+		metrics.votePenaltyCount.WithLabelValues("miss", validatorAddress.String()).Add(missCount)
 
 	}()
 }
