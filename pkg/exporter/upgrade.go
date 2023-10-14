@@ -74,7 +74,7 @@ func GetUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *U
 		}
 
 		upgradeHeight := upgradeRes.Plan.Height
-		remainingHeight := upgradeHeight - cs.LatestBlockHeight()
+		remainingHeight := upgradeHeight - cs.SyncInfo().LatestBlockHeight
 
 		if remainingHeight <= 0 {
 			metrics.upgradePlanGauge.With(prometheus.Labels{
