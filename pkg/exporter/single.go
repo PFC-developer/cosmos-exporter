@@ -21,17 +21,21 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 	generalMetrics := NewGeneralMetrics(registry, s.Config)
 	var validatorMetrics *ValidatorMetrics
+	var validatorExtendedMetrics *ValidatorExtendedMetrics
 	var paramsMetrics *ParamsMetrics
 	var upgradeMetrics *UpgradeMetrics
 	var walletMetrics *WalletMetrics
+	var walletExtendedMetrics *WalletExtendedMetrics
 	//var kujiOracleMetrics *KujiMetrics
 	var proposalMetrics *ProposalsMetrics
 
 	if len(s.Validators) > 0 {
 		validatorMetrics = NewValidatorMetrics(registry, s.Config)
+		validatorExtendedMetrics = NewValidatorExtendedMetrics(registry, s.Config)
 	}
 	if len(s.Wallets) > 0 {
 		walletMetrics = NewWalletMetrics(registry, s.Config)
+		walletExtendedMetrics = newWalletExtendedMetrics(registry, s.Config)
 	}
 	if s.Params {
 		paramsMetrics = NewParamsMetrics(registry, s.Config)
@@ -80,6 +84,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
 					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
+					GetValidatorExtendedMetrics(&wg, &sublogger, validatorExtendedMetrics, s, s.Config, valAddress)
 				}()
 				/*
 					if s.Oracle {
@@ -103,6 +108,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Msg("Could not get wallet address")
 			} else {
 				GetWalletMetrics(&wg, &sublogger, walletMetrics, s, s.Config, accAddress, false)
+				getWalletExtendedMetrics(&wg, &sublogger, walletMetrics, s, s.Config, accAddress)
 			}
 		}
 	}
