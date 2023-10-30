@@ -1,9 +1,9 @@
 # cosmos-exporter
 
-![Latest release](https://img.shields.io/github/v/release/pfc-developer/cosmos-exporter)
-[![Actions Status](https://github.com/pfc-developer/cosmos-exporter/workflows/test/badge.svg)](https://github.com/pfc-developer/cosmos-exporter/actions)
+![Latest release](https://img.shields.io/github/v/release/zkvalidator/cosmos-exporter)
+[![Actions Status](https://github.com/zkvalidator/cosmos-exporter/workflows/test/badge.svg)](https://github.com/zkvalidator/cosmos-exporter/actions)
 
-This is a fork of: https://github.com/solarlabsteam/cosmos-exporter 
+This is a fork of: https://github.com/pfc-developer/cosmos-exporter 
 
 There are two modes to run this in 'single' mode, and 'detailed' mode
 
