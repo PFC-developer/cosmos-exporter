@@ -6,6 +6,7 @@ import (
 	query "github.com/cosmos/cosmos-sdk/types/query"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
@@ -435,23 +436,47 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			}
 		}()
 	*/
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sublogger.Debug().Msg("Started querying global gov params")
-		govClient := govtypes.NewQueryClient(s.GrpcConn)
-		proposals, err := govClient.Proposals(context.Background(), &govtypes.QueryProposalsRequest{
-			ProposalStatus: govtypes.StatusVotingPeriod,
-		})
-		if err != nil {
-			sublogger.Error().
-				Err(err).
-				Msg("Could not get active proposals")
-		}
 
-		proposalsCount := len(proposals.GetProposals())
-		metrics.govVotingPeriodProposals.Set(float64(proposalsCount))
-	}()
+	if config.PropV1 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sublogger.Debug().Msg("Started querying global gov V1 params")
+
+			govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+			proposals, err := govClient.Proposals(context.Background(), &govtypeV1.QueryProposalsRequest{
+				ProposalStatus: govtypeV1.StatusVotingPeriod,
+			})
+			if err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not get active proposals")
+			}
+			proposalsCount := len(proposals.GetProposals())
+			metrics.govVotingPeriodProposals.Set(float64(proposalsCount))
+		}()
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sublogger.Debug().Msg("Started querying global gov v1beta1 params")
+
+			govClient := govtypes.NewQueryClient(s.GrpcConn)
+			proposals, err := govClient.Proposals(context.Background(), &govtypes.QueryProposalsRequest{
+				ProposalStatus: govtypes.StatusVotingPeriod,
+			})
+			if err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not get active proposals")
+			}
+
+			proposalsCount := len(proposals.GetProposals())
+			metrics.govVotingPeriodProposals.Set(float64(proposalsCount))
+		}()
+	}
 
 }
 
