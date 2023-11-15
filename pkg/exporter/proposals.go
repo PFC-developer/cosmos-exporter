@@ -92,11 +92,6 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 					} else {
 						title = metadata.Title
 					}
-					sublogger.Info().
-						Str("proposal_id", fmt.Sprint(proposal.Id)).
-						Str("metadata", metadata.Title).
-						Msg("metadata")
-
 				} else {
 					sublogger.Info().
 						Str("proposal_id", fmt.Sprint(proposal.Id)).
