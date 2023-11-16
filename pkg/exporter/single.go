@@ -24,8 +24,9 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 	var paramsMetrics *ParamsMetrics
 	var upgradeMetrics *UpgradeMetrics
 	var walletMetrics *WalletMetrics
-	//var kujiOracleMetrics *KujiMetrics
+
 	var proposalMetrics *ProposalsMetrics
+	var validatorVotingMetrics *ValidatorVotingMetrics
 
 	if len(s.Validators) > 0 {
 		validatorMetrics = NewValidatorMetrics(registry, s.Config)
@@ -39,14 +40,13 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 	if s.Upgrades {
 		upgradeMetrics = NewUpgradeMetrics(registry, s.Config)
 	}
-	/*
-		if s.Oracle {
-			kujiOracleMetrics = NewKujiMetrics(registry, s.Config)
-		}
-	*/
 
 	if s.Proposals {
 		proposalMetrics = NewProposalsMetrics(registry, s.Config)
+	}
+
+	if s.Config.Votes && len(s.Validators) > 0 {
+		validatorVotingMetrics = NewValidatorVotingMetrics(registry, s.Config)
 	}
 
 	var wg sync.WaitGroup
@@ -81,18 +81,72 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 
 					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
 				}()
-				/*
-					if s.Oracle {
-						sublogger.Debug().Str("address", validator).Msg("Fetching Kujira details")
 
-						getKujiMetrics(&wg, &sublogger, kujiOracleMetrics, s, s.Config, valAddress)
-					}
-
-				*/
 			}
 		}
 		val_wg.Wait()
 	}
+	if s.Config.Votes && len(s.Validators) > 0 {
+		// use 2 groups.
+		// the first group "prop_wg" allows us to batch the call to get the active props
+		// the 'BasicMetrics' will then add a request to the outer wait 'wg'.
+		// we ensure that all the requests are added by waiting for the 'val_wg' to finish before waiting on the 'wg'
+		var prop_wg sync.WaitGroup
+		prop_wg.Add(1)
+		var activeProps []uint64
+
+		go func() {
+			defer prop_wg.Done()
+			var err error
+			if s.Config.PropV1 {
+				activeProps, err = s.GetActiveProposalsV1(&sublogger)
+				if err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get active proposals V1")
+				}
+			} else {
+				activeProps, err = s.GetActiveProposals(&sublogger)
+				if err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get active proposals")
+				}
+			}
+		}()
+
+		prop_wg.Wait()
+
+		for _, validator := range s.Validators {
+			valAddress, err := sdk.ValAddressFromBech32(validator)
+			if err != nil {
+				sublogger.Error().
+					Str("address", validator).
+					Err(err).
+					Msg("Could not get validator address")
+
+			} else {
+				var accAddress sdk.AccAddress
+				err := accAddress.Unmarshal(valAddress.Bytes())
+				if err != nil {
+					sublogger.Error().
+						Str("address", validator).
+						Err(err).
+						Msg("Could not get acc address")
+
+				}
+				for _, propId := range activeProps {
+					GetProposalsVoteMetrics(&wg, &sublogger, validatorVotingMetrics, s, s.Config, propId, valAddress, accAddress)
+					/*
+						sublogger.Debug().
+							Str("Validator", valAddress.String()).
+							Str("Wallet", accAddress.String()).
+							Uint64("Prop", propId).Msg("Get Vote")*/
+				}
+			}
+		}
+	}
+
 	if len(s.Wallets) > 0 {
 		for _, wallet := range s.Wallets {
 			accAddress, err := sdk.AccAddressFromBech32(wallet)

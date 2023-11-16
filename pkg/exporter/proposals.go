@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/rs/zerolog"
 	"net/http"
@@ -21,6 +22,9 @@ import (
 
 type ProposalsMetrics struct {
 	proposalsGauge *prometheus.GaugeVec
+}
+type ValidatorVotingMetrics struct {
+	validatorVoting *prometheus.GaugeVec
 }
 
 type proposalMeta struct {
@@ -41,6 +45,21 @@ func NewProposalsMetrics(reg prometheus.Registerer, config *ServiceConfig) *Prop
 	reg.MustRegister(m.proposalsGauge)
 	return m
 }
+func NewValidatorVotingMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorVotingMetrics {
+	m := &ValidatorVotingMetrics{
+		validatorVoting: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_validator_voting_proposals",
+				Help:        "Active Proposals of Cosmos-based blockchain, and how a validator voted",
+				ConstLabels: config.ConstLabels,
+			},
+			[]string{"id", "validator", "voted", "vote_option"},
+		),
+	}
+	reg.MustRegister(m.validatorVoting)
+	return m
+}
+
 func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ProposalsMetrics, s *Service, config *ServiceConfig, activeOnly bool) {
 	if config.PropV1 {
 		wg.Add(1)
@@ -113,7 +132,6 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 						"voting_end_time":   proposal.VotingEndTime.String(),
 					}).Set(float64(proposal.Id))
 				}
-
 			}
 		}()
 	} else {
@@ -176,6 +194,121 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 			}
 		}()
 	}
+}
+func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorVotingMetrics, s *Service, _ *ServiceConfig, id uint64, validator types.ValAddress, wallet types.AccAddress) {
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		var proposals []govtypes.Proposal
+
+		sublogger.Debug().Msg("Started querying v1beta1 proposals")
+		queryStart := time.Now()
+
+		govClient := govtypes.NewQueryClient(s.GrpcConn)
+
+		voteReq := govtypes.QueryVoteRequest{ProposalId: id, Voter: wallet.String()}
+
+		voteResponse, err := govClient.Vote(
+			context.Background(),
+			&voteReq,
+		)
+		if err != nil {
+			metrics.validatorVoting.With(prometheus.Labels{
+				"id":          fmt.Sprintf("%d", id),
+				"validator":   validator.String(),
+				"voted":       "no",
+				"vote_option": "NOT_VOTED",
+			}).Set(float64(0))
+
+			sublogger.Debug().Err(err).Msg("Could not get vote")
+			return
+		}
+
+		sublogger.Debug().
+			Float64("request-time", time.Since(queryStart).Seconds()).
+			Msg("Finished getting vote")
+
+		sublogger.Debug().
+			Int("proposalsLength", len(proposals)).
+			Msg("Proposals info")
+
+		//	"id",  "validator", "vote", "vote_option"
+		for _, voteOption := range voteResponse.Vote.Options {
+			metrics.validatorVoting.With(prometheus.Labels{
+				"id":          fmt.Sprintf("%d", id),
+				"validator":   validator.String(),
+				"voted":       "yes",
+				"vote_option": voteOption.Option.String(),
+			}).Set(float64(voteOption.Size()))
+		}
+	}()
+
+}
+func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, error) {
+	sublogger.Debug().Msg("Started querying v1 proposals")
+	queryStart := time.Now()
+
+	govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+
+	var propReq govtypeV1.QueryProposalsRequest
+
+	propReq = govtypeV1.QueryProposalsRequest{ProposalStatus: govtypeV1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+
+	proposalsResponse, err := govClient.Proposals(
+		context.Background(),
+		&propReq,
+	)
+	if err != nil {
+		sublogger.Error().Err(err).Msg("Could not get proposals")
+		return nil, err
+	}
+
+	sublogger.Debug().
+		Float64("request-time", time.Since(queryStart).Seconds()).
+		Msg("Finished querying proposals")
+
+	//var x = [];
+	var proposals []uint64
+	for _, prop := range proposalsResponse.Proposals {
+		if prop.Status == govtypeV1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
+			proposals = append(proposals, prop.Id)
+		}
+	}
+	return proposals, nil
+
+}
+func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error) {
+	sublogger.Debug().Msg("Started querying v1 proposals")
+	queryStart := time.Now()
+
+	govClient := govtypes.NewQueryClient(s.GrpcConn)
+
+	var propReq govtypes.QueryProposalsRequest
+
+	propReq = govtypes.QueryProposalsRequest{ProposalStatus: govtypes.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+
+	proposalsResponse, err := govClient.Proposals(
+		context.Background(),
+		&propReq,
+	)
+	if err != nil {
+		sublogger.Error().Err(err).Msg("Could not get proposals")
+		return nil, err
+	}
+
+	sublogger.Debug().
+		Float64("request-time", time.Since(queryStart).Seconds()).
+		Msg("Finished querying proposals")
+	var proposals []uint64
+	for _, prop := range proposalsResponse.Proposals {
+		if prop.Status == govtypes.StatusVotingPeriod {
+			proposals = append(proposals, prop.ProposalId)
+		}
+	}
+	return proposals, nil
+
 }
 func (s *Service) ProposalsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()

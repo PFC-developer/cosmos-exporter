@@ -49,6 +49,7 @@ type ServiceConfig struct {
 	Params     bool
 	TokenPrice bool
 	PropV1     bool
+	Votes      bool
 }
 
 type Service struct {
@@ -225,6 +226,7 @@ func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringSliceVar(&config.Wallets, "wallets", nil, "serve info about passed wallets")
 	cmd.PersistentFlags().StringSliceVar(&config.Validators, "validators", nil, "serve info about passed validators")
 	cmd.PersistentFlags().BoolVar(&config.PropV1, "propv1", false, "use PropV1 instead of PropV1Beta calls")
+	cmd.PersistentFlags().BoolVar(&config.Votes, "votes", false, "get validator votes on active proposals")
 }
 func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 	return event.
@@ -248,7 +250,8 @@ func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 		Bool("--params", config.Params).
 		Bool("--upgrades", config.Upgrades).
 		Bool("--price", config.TokenPrice).
-		Bool("--propv1", config.PropV1)
+		Bool("--propv1", config.PropV1).
+		Bool("--votes", config.Votes)
 }
 
 func (config *ServiceConfig) SetBechPrefixes(cmd *cobra.Command) {
