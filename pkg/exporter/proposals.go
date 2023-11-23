@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/rs/zerolog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -101,15 +102,21 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				var title string = ""
 				if len(proposal.Metadata) > 0 {
 					var metadata proposalMeta
-
-					err := json.Unmarshal([]byte(proposal.Metadata), &metadata)
-					if err != nil {
-						sublogger.Error().
-							Str("proposal_id", fmt.Sprint(proposal.Id)).
-							Err(err).
-							Msg("Could not parse proposal metadata field")
+					var t = strings.Trim(proposal.Metadata, " ")
+					if strings.HasPrefix(t, "{") {
+						err := json.Unmarshal([]byte(proposal.Metadata), &metadata)
+						if err != nil {
+							sublogger.Error().
+								Str("proposal_id", fmt.Sprint(proposal.Id)).
+								Err(err).
+								Msg("Could not parse proposal metadata field")
+						} else {
+							title = metadata.Title
+						}
+					} else if strings.HasPrefix(t, "ipfs://") {
+						title = t
 					} else {
-						title = metadata.Title
+						title = fmt.Sprintf("Proposal %d has unknown metadata", proposal.Id)
 					}
 				} else {
 					sublogger.Info().
