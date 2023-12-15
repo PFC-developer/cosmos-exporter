@@ -3,10 +3,11 @@ package exporter
 import (
 	"context"
 	"fmt"
-	tmrpc "github.com/tendermint/tendermint/rpc/client/http"
 	"time"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmrpc "github.com/cometbft/cometbft/rpc/client/http"
+
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 )
 
 type ChainStatus struct {
