@@ -55,7 +55,7 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 			Msg("Started querying delegator")
 		queryStart := time.Now()
 
-		stakingClient := staking.types.NewQueryClient(s.GrpcConn)
+		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
 		delegatorRes, err := stakingClient.ValidatorDelegations(
 			context.Background(),
 			&stakingtypes.QueryValidatorDelegationsRequest{
