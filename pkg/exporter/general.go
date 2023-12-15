@@ -11,12 +11,13 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"main/pkg/cosmosdirectory"
 	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/solarlabsteam/cosmos-exporter/pkg/cosmosdirectory"
 
 	"github.com/rs/zerolog"
 

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
+	exporter "github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"

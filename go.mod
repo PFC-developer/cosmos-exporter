@@ -2,7 +2,7 @@ module github.com/solarlabsteam/cosmos-exporter
 
 go 1.21
 
-toolchain go1.21.4
+toolchain go1.21.5
 
 require (
 	cosmossdk.io/api v0.7.2 // indirect
@@ -157,3 +157,5 @@ require (
 )
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+
+replace github.com/solarlabsteam/cosmos-exporter => ./
