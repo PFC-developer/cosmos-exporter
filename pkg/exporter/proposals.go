@@ -2,20 +2,21 @@ package exporter
 
 import (
 	"context"
-	"cosmossdk.io/codec"
-	codectypes "cosmossdk.io/codec/types"
-	"cosmossdk.io/types"
-	"cosmossdk.io/types/query"
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	govtypeV1 "cosmossdk.io/x/gov/types/v1"
-	govtypes "cosmossdk.io/x/gov/types/v1beta1"
+	"cosmossdk.io/codec"
+	codectypes "cosmossdk.io/codec/types"
+	"github.com/cosmos/cosmos-sdk/query"
+	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/rs/zerolog"
+
+	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

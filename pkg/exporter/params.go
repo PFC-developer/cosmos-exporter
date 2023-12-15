@@ -2,15 +2,16 @@ package exporter
 
 import (
 	"context"
-	distributiontypes "cosmossdk.io/x/distribution/types"
-	minttypes "cosmossdk.io/x/mint/types"
-	slashingtypes "cosmossdk.io/x/slashing/types"
-	stakingtypes "cosmossdk.io/x/staking/types"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/rs/zerolog"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"

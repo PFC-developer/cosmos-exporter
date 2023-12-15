@@ -2,16 +2,17 @@ package exporter
 
 import (
 	"context"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	sdk "cosmossdk.io/types"
-	banktypes "cosmossdk.io/x/bank/types"
-	distributiontypes "cosmossdk.io/x/distribution/types"
-	stakingtypes "cosmossdk.io/x/staking/types"
+	"github.com/rs/zerolog"
+
+	sdk "github.com/cosmos/cosmos-sdk"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

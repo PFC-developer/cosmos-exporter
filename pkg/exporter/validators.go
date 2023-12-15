@@ -2,9 +2,7 @@ package exporter
 
 import (
 	"context"
-	crytpocode "cosmossdk.io/crypto/codec"
 	"encoding/hex"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,10 +10,13 @@ import (
 	"sync"
 	"time"
 
+	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/rs/zerolog/log"
+
 	codectypes "cosmossdk.io/codec/types"
-	querytypes "cosmossdk.io/types/query"
-	slashingtypes "cosmossdk.io/x/slashing/types"
-	stakingtypes "cosmossdk.io/x/staking/types"
+	querytypes "github.com/cosmos/cosmos-sdk/query"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

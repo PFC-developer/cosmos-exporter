@@ -2,15 +2,16 @@ package exporter
 
 import (
 	"context"
-	"cosmossdk.io/client/grpc/tmservice"
-	banktypes "cosmossdk.io/x/bank/types"
 	"fmt"
+	"math"
+	"strings"
+
+	tmservice "cosmossdk.io/client/grpc/cmtservice"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"math"
-	"strings"
 )
 
 type ServiceConfig struct {

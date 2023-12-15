@@ -1,10 +1,11 @@
 package exporter
 
 import (
-	sdk "cosmossdk.io/types"
 	"net/http"
 	"sync"
 	"time"
+
+	sdk "github.com/cosmos/cosmos-sdk"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"

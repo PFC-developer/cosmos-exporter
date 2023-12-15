@@ -2,21 +2,24 @@ package exporter
 
 import (
 	"context"
-	tmservice "cosmossdk.io/client/grpc/tmservice"
-	query "cosmossdk.io/types/query"
-	banktypes "cosmossdk.io/x/bank/types"
-	distributiontypes "cosmossdk.io/x/distribution/types"
-	govtypeV1 "cosmossdk.io/x/gov/types/v1"
-	govtypes "cosmossdk.io/x/gov/types/v1beta1"
-	stakingtypes "cosmossdk.io/x/staking/types"
 
-	"github.com/rs/zerolog"
+	tmservice "cosmossdk.io/client/grpc/cmtservice"
+	query "github.com/cosmos/cosmos-sdk/query"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+
 	"main/pkg/cosmosdirectory"
 	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
+
 	//minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
