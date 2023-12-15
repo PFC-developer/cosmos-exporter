@@ -2,8 +2,9 @@ package cosmosdirectory_test
 
 import (
 	"fmt"
-	"main/pkg/cosmosdirectory"
 	"testing"
+
+	"github.com/solarlabsteam/cosmos-exporter/pkg/cosmosdirectory"
 
 	"github.com/stretchr/testify/require"
 )
