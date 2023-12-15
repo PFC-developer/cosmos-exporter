@@ -334,7 +334,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		found := false
 
 		for _, signingInfoIterated := range signingInfos {
-			if pubKey.String() == signingInfoIterated.Address {
+			if string(pubKey) == signingInfoIterated.Address {
 				found = true
 				signingInfo = signingInfoIterated
 				break
@@ -345,7 +345,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 			slashingRes, err := slashingClient.SigningInfo(
 				context.Background(),
-				&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
+				&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
 			)
 			if err != nil {
 				sublogger.Debug().

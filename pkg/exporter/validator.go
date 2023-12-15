@@ -302,7 +302,7 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
 		)
 		if err != nil {
 			sublogger.Error().
