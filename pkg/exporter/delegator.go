@@ -2,11 +2,6 @@ package exporter
 
 import (
 	"context"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	querytypes "github.com/cosmos/cosmos-sdk/types/query"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-
 	"net/http"
 	"sync"
 	"time"
@@ -14,6 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,16 @@ package exporter
 
 import (
 	"context"
+	"math/big"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
 
 	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	query "github.com/cosmos/cosmos-sdk/types/query"
@@ -11,20 +21,7 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"math/big"
-	"net/http"
-	"strconv"
-	"sync"
-	"time"
-
 	"github.com/solarlabsteam/cosmos-exporter/pkg/cosmosdirectory"
-
-	"github.com/rs/zerolog"
-
-	//minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type GeneralMetrics struct {
@@ -159,8 +156,8 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 		)
 
 	*/
-
 }
+
 func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *Service, config *ServiceConfig) {
 	if config.TokenPrice {
 		wg.Add(1)
@@ -195,7 +192,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			Msg("Finished querying block height")
 
 		metrics.latestBlockHeight.Set(latest)
-
 	}()
 
 	wg.Add(1)
@@ -211,7 +207,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			context.Background(),
 			&tmservice.GetSyncingRequest{},
 		)
-
 		if err != nil {
 			sublogger.Error().Err(err).Msg("Could not get node syncing")
 			return
@@ -226,7 +221,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		} else {
 			metrics.syncing.Set(float64(0))
 		}
-
 	}()
 
 	wg.Add(1)
@@ -257,8 +251,8 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 		metrics.bondedTokensGauge.Set(bondedTokens)
 		metrics.notBondedTokensGauge.Set(notBondedTokens)
-		//fmt.Println("response: ", response.Pool.BondedTokens)
-		//generalBondedTokensGauge.Set(float64(response.Pool.BondedTokens.Int64()))
+
+
 		//generalNotBondedTokensGauge.Set(float64(response.Pool.NotBondedTokens.Int64()))
 	}()
 
@@ -305,7 +299,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			context.Background(),
 			&tmservice.GetNodeInfoRequest{},
 		)
-
 		if err != nil {
 			sublogger.Error().Err(err).Msg("Could not get tmService NodeInfo")
 			return
@@ -330,7 +323,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			"version": nodeinfo.Version,
 			"moniker": nodeinfo.Moniker,
 		}).Set(float64(1))
-
 	}()
 
 	wg.Add(1)
@@ -481,7 +473,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			metrics.govVotingPeriodProposals.Set(float64(proposalsCount))
 		}()
 	}
-
 }
 
 func (s *Service) GeneralHandler(w http.ResponseWriter, r *http.Request) {

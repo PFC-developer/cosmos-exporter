@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tmrpc "github.com/cometbft/cometbft/rpc/client/http"
-
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 )
 

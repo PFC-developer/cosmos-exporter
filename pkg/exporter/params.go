@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/rs/zerolog"
-
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ParamsMetrics struct {
@@ -166,8 +166,8 @@ func NewParamsMetrics(reg prometheus.Registerer, config *ServiceConfig) *ParamsM
 
 	return m
 }
-func GetParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ParamsMetrics, s *Service, config *ServiceConfig) {
 
+func GetParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ParamsMetrics, s *Service, config *ServiceConfig) {
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying global staking params")
@@ -351,8 +351,8 @@ func GetParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pa
 		}
 	}()
 	wg.Add(1)
-
 }
+
 func (s *Service) ParamsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 

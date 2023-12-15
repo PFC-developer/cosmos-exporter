@@ -9,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	exporter "github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
-
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	exporter "github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 )
 
 /*
@@ -71,7 +71,6 @@ type LastClaimEvent struct {
 }
 
 func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMetrics, _ *exporter.Service, _ *exporter.ServiceConfig, orchestratorAddress sdk.AccAddress) {
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -154,6 +153,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		metrics.lastClaimedEvent.WithLabelValues("event_height").Add(eventHeight)
 	}()
 }
+
 func InjMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
 	requestStart := time.Now()
 

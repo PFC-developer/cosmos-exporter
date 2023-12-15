@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/rs/zerolog"
-
 	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ProposalsMetrics struct {
@@ -47,6 +47,7 @@ func NewProposalsMetrics(reg prometheus.Registerer, config *ServiceConfig) *Prop
 	reg.MustRegister(m.proposalsGauge)
 	return m
 }
+
 func NewValidatorVotingMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorVotingMetrics {
 	m := &ValidatorVotingMetrics{
 		validatorVoting: prometheus.NewGaugeVec(
@@ -91,19 +92,18 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 			sublogger.Debug().
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying proposals")
-			var proposals = proposalsResponse.Proposals
+			proposals := proposalsResponse.Proposals
 
 			sublogger.Debug().
 				Int("proposalsLength", len(proposals)).
 				Msg("Proposals info")
 
-			//cdcRegistry := codectypes.NewInterfaceRegistry()
-			//cdc := codec.NewProtoCodec(cdcRegistry)
+			// cdc := codec.NewProtoCodec(cdcRegistry)
 			for _, proposal := range proposals {
 				var title string = ""
 				if len(proposal.Metadata) > 0 {
 					var metadata proposalMeta
-					var t = strings.Trim(proposal.Metadata, " ")
+					t := strings.Trim(proposal.Metadata, " ")
 					if strings.HasPrefix(t, "{") {
 						err := json.Unmarshal([]byte(proposal.Metadata), &metadata)
 						if err != nil {
@@ -184,7 +184,6 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 
 				var content govtypes.TextProposal
 				err := cdc.Unmarshal(proposal.Content.Value, &content)
-
 				if err != nil {
 					sublogger.Error().
 						Str("proposal_id", fmt.Sprint(proposal.ProposalId)).
@@ -203,8 +202,8 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 		}()
 	}
 }
-func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorVotingMetrics, s *Service, _ *ServiceConfig, id uint64, validator types.ValAddress, wallet types.AccAddress) {
 
+func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorVotingMetrics, s *Service, _ *ServiceConfig, id uint64, validator types.ValAddress, wallet types.AccAddress) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -252,8 +251,8 @@ func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metr
 			}).Set(float64(voteOption.Size()))
 		}
 	}()
-
 }
+
 func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, error) {
 	sublogger.Debug().Msg("Started querying v1 proposals")
 	queryStart := time.Now()
@@ -277,7 +276,6 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 		Float64("request-time", time.Since(queryStart).Seconds()).
 		Msg("Finished querying proposals")
 
-	//var x = [];
 	var proposals []uint64
 	for _, prop := range proposalsResponse.Proposals {
 		if prop.Status == govtypeV1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
@@ -285,8 +283,8 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 		}
 	}
 	return proposals, nil
-
 }
+
 func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error) {
 	sublogger.Debug().Msg("Started querying v1 proposals")
 	queryStart := time.Now()
@@ -316,8 +314,8 @@ func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error
 		}
 	}
 	return proposals, nil
-
 }
+
 func (s *Service) ProposalsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 

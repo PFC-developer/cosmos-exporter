@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type WalletMetrics struct {
@@ -30,7 +30,6 @@ type WalletExtendedMetrics struct {
 
 func NewWalletMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletMetrics {
 	m := &WalletMetrics{
-
 		balanceGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_wallet_balance",
@@ -44,6 +43,7 @@ func NewWalletMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletM
 
 	return m
 }
+
 func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletExtendedMetrics {
 	m := &WalletExtendedMetrics{
 		delegationGauge: prometheus.NewGaugeVec(
@@ -90,8 +90,8 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) 
 
 	return m
 }
-func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress, allBalances bool) {
 
+func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress, allBalances bool) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -107,7 +107,6 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				context.Background(),
 				&banktypes.QueryAllBalancesRequest{Address: address.String()},
 			)
-
 			if err != nil {
 				sublogger.Error().
 					Str("address", address.String()).
@@ -122,7 +121,6 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				Msg("Finished querying all balances")
 
 			for _, balance := range bankRes.Balances {
-
 				// because cosmos dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(balance.Amount.String(), 64); err != nil {
 					sublogger.Error().
@@ -141,7 +139,6 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				context.Background(),
 				&banktypes.QueryBalanceRequest{Address: address.String(), Denom: config.Denom},
 			)
-
 			if err != nil {
 				sublogger.Error().
 					Str("address", address.String()).
@@ -170,12 +167,10 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
-
 	}()
-
 }
-func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletExtendedMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress) {
 
+func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *WalletExtendedMetrics, s *Service, config *ServiceConfig, address sdk.AccAddress) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -360,8 +355,8 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			}
 		}
 	}()
-
 }
+
 func (s *Service) WalletHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 

@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,6 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				val_wg.Add(1)
 				go func() {
@@ -125,7 +124,6 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				var accAddress sdk.AccAddress
 				err := accAddress.Unmarshal(valAddress.Bytes())
@@ -134,7 +132,6 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 						Str("address", validator).
 						Err(err).
 						Msg("Could not get acc address")
-
 				}
 				for _, propId := range activeProps {
 					GetProposalsVoteMetrics(&wg, &sublogger, validatorVotingMetrics, s, s.Config, propId, valAddress, accAddress)

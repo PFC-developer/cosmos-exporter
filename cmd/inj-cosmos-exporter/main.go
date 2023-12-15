@@ -5,16 +5,21 @@ import (
 	"net/http"
 	"os"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
-	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 )
 
-var config exporter.ServiceConfig
-var log = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+var (
+	config exporter.ServiceConfig
+	log    = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+)
+
 var (
 	Peggo        bool
 	LCD          string
