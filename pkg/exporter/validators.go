@@ -13,8 +13,8 @@ import (
 	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/rs/zerolog/log"
 
-	codectypes "cosmossdk.io/codec/types"
-	querytypes "github.com/cosmos/cosmos-sdk/query"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
@@ -389,7 +389,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			validatorsIsActiveGauge.With(prometheus.Labels{
 				"address":     validator.OperatorAddress,
 				"moniker":     validator.Description.Moniker,
-				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey.Bytes())),
+				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey)),
 			}).Set(active)
 		}
 	}

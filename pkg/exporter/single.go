@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"

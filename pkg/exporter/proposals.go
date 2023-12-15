@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"cosmossdk.io/codec"
-	codectypes "cosmossdk.io/codec/types"
-	"github.com/cosmos/cosmos-sdk/query"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types"
+	codectypes "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/rs/zerolog"
 
 	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"

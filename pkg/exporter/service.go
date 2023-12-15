@@ -6,7 +6,7 @@ import (
 	"math"
 	"strings"
 
-	tmservice "cosmossdk.io/client/grpc/cmtservice"
+	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"

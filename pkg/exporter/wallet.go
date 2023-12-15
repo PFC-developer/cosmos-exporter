@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	sdk "github.com/cosmos/cosmos-sdk"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"

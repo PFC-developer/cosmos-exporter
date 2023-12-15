@@ -3,8 +3,8 @@ package exporter
 import (
 	"context"
 
-	tmservice "cosmossdk.io/client/grpc/cmtservice"
-	query "github.com/cosmos/cosmos-sdk/query"
+	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
+	query "github.com/cosmos/cosmos-sdk/types/query"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"

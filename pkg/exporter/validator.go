@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	codectypes "cosmossdk.io/codec/types"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	sdk "github.com/cosmos/cosmos-sdk"
-	querytypes "github.com/cosmos/cosmos-sdk/query"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
