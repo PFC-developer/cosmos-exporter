@@ -2,13 +2,13 @@ package exporter
 
 import (
 	"context"
-	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
-	query "github.com/cosmos/cosmos-sdk/types/query"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	tmservice "cosmossdk.io/client/grpc/tmservice"
+	query "cosmossdk.io/types/query"
+	banktypes "cosmossdk.io/x/bank/types"
+	distributiontypes "cosmossdk.io/x/distribution/types"
+	govtypeV1 "cosmossdk.io/x/gov/types/v1"
+	govtypes "cosmossdk.io/x/gov/types/v1beta1"
+	stakingtypes "cosmossdk.io/x/staking/types"
 
 	"github.com/rs/zerolog"
 	"main/pkg/cosmosdirectory"
@@ -451,7 +451,7 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			if err != nil {
 				sublogger.Error().
 					Err(err).
-					Msg("Could not get active proposals")
+					Msg("Could not get active proposals v1 (general)")
 			}
 			proposalsCount := len(proposals.GetProposals())
 			metrics.govVotingPeriodProposals.Set(float64(proposalsCount))
@@ -470,7 +470,7 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 			if err != nil {
 				sublogger.Error().
 					Err(err).
-					Msg("Could not get active proposals")
+					Msg("Could not get active proposals (v1beta1)")
 			}
 
 			proposalsCount := len(proposals.GetProposals())

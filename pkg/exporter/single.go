@@ -1,7 +1,7 @@
 package exporter
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "cosmossdk.io/types"
 	"net/http"
 	"sync"
 	"time"
@@ -103,14 +103,14 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals V1")
+						Msg("Could not get active proposals V1 (general)")
 				}
 			} else {
 				activeProps, err = s.GetActiveProposals(&sublogger)
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals")
+						Msg("Could not get active proposals (general)")
 				}
 			}
 		}()

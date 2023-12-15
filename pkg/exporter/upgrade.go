@@ -2,7 +2,7 @@ package exporter
 
 import (
 	"context"
-	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/rs/zerolog"
 	"net/http"
 	"strconv"

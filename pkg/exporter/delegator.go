@@ -2,9 +2,10 @@ package exporter
 
 import (
 	"context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	querytypes "github.com/cosmos/cosmos-sdk/types/query"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	sdk "cosmossdk.io/types"
+	querytypes "cosmossdk.io/types/query"
+	//stakingtypes "cosmossdk.io/x/staking/types"
+	staking "cosmossdk.io/x/staking"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -52,7 +53,7 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 			Msg("Started querying delegator")
 		queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
+		stakingClient := staking.types.NewQueryClient(s.GrpcConn)
 		delegatorRes, err := stakingClient.ValidatorDelegations(
 			context.Background(),
 			&stakingtypes.QueryValidatorDelegationsRequest{

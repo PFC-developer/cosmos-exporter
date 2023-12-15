@@ -2,20 +2,20 @@ package exporter
 
 import (
 	"context"
+	"cosmossdk.io/codec"
+	codectypes "cosmossdk.io/codec/types"
+	"cosmossdk.io/types"
+	"cosmossdk.io/types/query"
 	"encoding/json"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
+	govtypeV1 "cosmossdk.io/x/gov/types/v1"
+	govtypes "cosmossdk.io/x/gov/types/v1beta1"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -83,7 +83,7 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				&propReq,
 			)
 			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get proposals")
+				sublogger.Error().Err(err).Msg("Could not get proposals (v1-props)")
 				return
 			}
 
@@ -164,7 +164,7 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				&propReq,
 			)
 			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get proposals")
+				sublogger.Error().Err(err).Msg("Could not get proposals (v1beta1-props)")
 				return
 			}
 
@@ -268,7 +268,7 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 		&propReq,
 	)
 	if err != nil {
-		sublogger.Error().Err(err).Msg("Could not get proposals")
+		sublogger.Error().Err(err).Msg("Could not get proposals-activeV1")
 		return nil, err
 	}
 
@@ -301,7 +301,7 @@ func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error
 		&propReq,
 	)
 	if err != nil {
-		sublogger.Error().Err(err).Msg("Could not get proposals")
+		sublogger.Error().Err(err).Msg("Could not get proposals-active")
 		return nil, err
 	}
 

@@ -132,14 +132,14 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals V1")
+						Msg("Could not get active proposals V1 (inj)")
 				}
 			} else {
 				activeProps, err = s.GetActiveProposals(&sublogger)
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals")
+						Msg("Could not get active proposals (inj)")
 				}
 			}
 		}()
