@@ -193,9 +193,8 @@ func (s *Service) GetLatestBlock() (float64, error) {
 	}
 	if response.GetSdkBlock() != nil {
 		return float64(response.GetSdkBlock().Header.Height), nil
-	} else {
-		return float64(response.GetBlock().Header.Height), nil
 	}
+	return float64(response.GetBlock().Header.Height), nil
 }
 
 func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {

@@ -18,7 +18,7 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 )
 
@@ -72,13 +72,13 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 			sublogger.Debug().Msg("Started querying v1 proposals")
 			queryStart := time.Now()
 
-			govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+			govClient := govv1.NewQueryClient(s.GrpcConn)
 
-			var propReq govtypeV1.QueryProposalsRequest
+			var propReq govv1.QueryProposalsRequest
 			if activeOnly {
-				propReq = govtypeV1.QueryProposalsRequest{ProposalStatus: govtypeV1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+				propReq = govv1.QueryProposalsRequest{ProposalStatus: govv1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 			} else {
-				propReq = govtypeV1.QueryProposalsRequest{Pagination: &query.PageRequest{Reverse: true}}
+				propReq = govv1.QueryProposalsRequest{Pagination: &query.PageRequest{Reverse: true}}
 			}
 			proposalsResponse, err := govClient.Proposals(
 				context.Background(),
@@ -100,11 +100,12 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 
 			// cdc := codec.NewProtoCodec(cdcRegistry)
 			for _, proposal := range proposals {
-				var title string = ""
+				var title string
 				if len(proposal.Metadata) > 0 {
 					var metadata proposalMeta
 					t := strings.Trim(proposal.Metadata, " ")
-					if strings.HasPrefix(t, "{") {
+					switch {
+					case strings.HasPrefix(t, "{"):
 						err := json.Unmarshal([]byte(proposal.Metadata), &metadata)
 						if err != nil {
 							sublogger.Error().
@@ -114,9 +115,9 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 						} else {
 							title = metadata.Title
 						}
-					} else if strings.HasPrefix(t, "ipfs://") {
+					case strings.HasPrefix(t, "ipfs://"):
 						title = t
-					} else {
+					default:
 						title = fmt.Sprintf("Proposal %d has unknown metadata", proposal.Id)
 					}
 				} else {
@@ -257,11 +258,9 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 	sublogger.Debug().Msg("Started querying v1 proposals")
 	queryStart := time.Now()
 
-	govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+	govClient := govv1.NewQueryClient(s.GrpcConn)
 
-	var propReq govtypeV1.QueryProposalsRequest
-
-	propReq = govtypeV1.QueryProposalsRequest{ProposalStatus: govtypeV1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+	propReq := govv1.QueryProposalsRequest{ProposalStatus: govv1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 
 	proposalsResponse, err := govClient.Proposals(
 		context.Background(),
@@ -278,7 +277,7 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 
 	var proposals []uint64
 	for _, prop := range proposalsResponse.Proposals {
-		if prop.Status == govtypeV1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
+		if prop.Status == govv1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
 			proposals = append(proposals, prop.Id)
 		}
 	}
@@ -291,9 +290,7 @@ func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error
 
 	govClient := govtypes.NewQueryClient(s.GrpcConn)
 
-	var propReq govtypes.QueryProposalsRequest
-
-	propReq = govtypes.QueryProposalsRequest{ProposalStatus: govtypes.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+	propReq := govtypes.QueryProposalsRequest{ProposalStatus: govtypes.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 
 	proposalsResponse, err := govClient.Proposals(
 		context.Background(),

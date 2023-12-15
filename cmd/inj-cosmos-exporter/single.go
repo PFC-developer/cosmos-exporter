@@ -61,7 +61,7 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 		exporter.GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 	}
 	if upgradeMetrics != nil {
-		exporter.GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+		exporter.DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 	}
 	if Orchestrator != "" && Peggo {
 		accAddress, err := sdk.AccAddressFromBech32(Orchestrator)
@@ -71,7 +71,7 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 				Err(err).
 				Msg("doesn't appear valid")
 		} else {
-			getInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, accAddress)
+			doInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, accAddress)
 		}
 	}
 	if len(s.Wallets) > 0 {
@@ -106,12 +106,12 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 					Msg("Could not get validator address")
 			} else {
 				val_wg.Add(1)
-				go func() {
+				go func(validator string) {
 					defer val_wg.Done()
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
 					exporter.GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
-				}()
+				}(validator)
 
 			}
 		}

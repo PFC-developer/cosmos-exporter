@@ -34,7 +34,7 @@ func NewUpgradeMetrics(reg prometheus.Registerer, config *ServiceConfig) *Upgrad
 	return m
 }
 
-func GetUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *Service, config *ServiceConfig) {
+func DoUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *Service, config *ServiceConfig) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -114,7 +114,7 @@ func (s *Service) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
 	upgradeMetrics := NewUpgradeMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+	DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 
 	wg.Wait()
 

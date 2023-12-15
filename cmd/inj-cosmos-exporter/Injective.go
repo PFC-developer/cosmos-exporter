@@ -16,7 +16,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	exporter "github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
+	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 )
 
 /*
@@ -70,7 +70,7 @@ type LastClaimEvent struct {
 	EventHeight string `json:"ethereum_event_height"`
 }
 
-func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMetrics, _ *exporter.Service, _ *exporter.ServiceConfig, orchestratorAddress sdk.AccAddress) {
+func doInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMetrics, _ *exporter.Service, _ *exporter.ServiceConfig, orchestratorAddress sdk.AccAddress) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -78,7 +78,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		queryStart := time.Now()
 
 		requestURL := fmt.Sprintf("%s/peggy/v1/module_state", LCD)
-		response, err := http.Get(requestURL)
+		response, err := http.Get(requestURL) // #nosec
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -115,7 +115,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		queryStart := time.Now()
 
 		requestURL := fmt.Sprintf("%s/peggy/v1/oracle/event/%s", LCD, orchestratorAddress.String())
-		response, err := http.Get(requestURL)
+		response, err := http.Get(requestURL) // #nosec
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -175,7 +175,7 @@ func InjMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 
 	var wg sync.WaitGroup
 
-	getInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, myAddress)
+	doInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, myAddress)
 
 	wg.Wait()
 

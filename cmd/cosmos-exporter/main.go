@@ -129,9 +129,10 @@ func Execute(_ *cobra.Command, _ []string) {
 		})
 	*/
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
-	err = http.ListenAndServe(config.ListenAddress, nil)
+	err = http.ListenAndServe(config.ListenAddress, nil) // #nosec
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Error().Err(err).Msg("Could not start application")
+		return
 	}
 }
 

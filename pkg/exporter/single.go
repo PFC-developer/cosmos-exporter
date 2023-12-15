@@ -57,7 +57,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 		GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 	}
 	if upgradeMetrics != nil {
-		GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+		DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 	}
 	if len(s.Validators) > 0 {
 		// use 2 groups.
@@ -75,12 +75,12 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Msg("Could not get validator address")
 			} else {
 				val_wg.Add(1)
-				go func() {
+				go func(validator string) {
 					defer val_wg.Done()
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
 					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
-				}()
+				}(validator)
 
 			}
 		}

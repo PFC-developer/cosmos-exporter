@@ -497,7 +497,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Finished querying validator unbonding delegations")
 
 		for _, unbonding := range stakingRes.UnbondingResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range unbonding.Entries {
 				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
 				if err != nil {
@@ -547,7 +547,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Finished querying validator redelegations")
 
 		for _, redelegation := range stakingRes.RedelegationResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range redelegation.Entries {
 				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
 				if err != nil {

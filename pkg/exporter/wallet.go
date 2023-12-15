@@ -241,7 +241,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Finished querying unbonding delegations")
 
 		for _, unbonding := range stakingRes.UnbondingResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range unbonding.Entries {
 				// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(entry.Balance.String(), 64); err != nil {
@@ -289,7 +289,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			Msg("Finished querying redelegations")
 
 		for _, redelegation := range stakingRes.RedelegationResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range redelegation.Entries {
 				// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(entry.Balance.String(), 64); err != nil {

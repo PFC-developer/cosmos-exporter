@@ -14,10 +14,10 @@ import (
 	"github.com/rs/zerolog"
 
 	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
-	query "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/cosmos/cosmos-sdk/types/query"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
@@ -252,8 +252,7 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		metrics.bondedTokensGauge.Set(bondedTokens)
 		metrics.notBondedTokensGauge.Set(notBondedTokens)
 
-
-		//generalNotBondedTokensGauge.Set(float64(response.Pool.NotBondedTokens.Int64()))
+		// generalNotBondedTokensGauge.Set(float64(response.Pool.NotBondedTokens.Int64()))
 	}()
 
 	wg.Add(1)
@@ -440,9 +439,9 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 			sublogger.Debug().Msg("Started querying global gov V1 params")
 
-			govClient := govtypeV1.NewQueryClient(s.GrpcConn)
-			proposals, err := govClient.Proposals(context.Background(), &govtypeV1.QueryProposalsRequest{
-				ProposalStatus: govtypeV1.StatusVotingPeriod,
+			govClient := govv1.NewQueryClient(s.GrpcConn)
+			proposals, err := govClient.Proposals(context.Background(), &govv1.QueryProposalsRequest{
+				ProposalStatus: govv1.StatusVotingPeriod,
 			})
 			if err != nil {
 				sublogger.Error().
