@@ -32,6 +32,9 @@ linters:
 
 issues:
   exclude-rules:
+    - text: ST1003
+      linters:
+        - stylecheck
     - text: 'differs only by capitalization to method'
       linters:
         - revive

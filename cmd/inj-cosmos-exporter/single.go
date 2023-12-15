@@ -1,14 +1,15 @@
 package main
 
 import (
+	"net/http"
+	"sync"
+	"time"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"main/pkg/exporter"
-	"net/http"
-	"sync"
-	"time"
+	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 )
 
 func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {

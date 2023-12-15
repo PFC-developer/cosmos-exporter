@@ -1,4 +1,4 @@
-module main
+module github.com/solarlabsteam/cosmos-exporter
 
 go 1.21
 

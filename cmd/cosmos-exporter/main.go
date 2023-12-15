@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
+	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"main/pkg/exporter"
-	"net/http"
-	"os"
 )
 
 var config exporter.ServiceConfig

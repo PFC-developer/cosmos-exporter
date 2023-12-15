@@ -4,13 +4,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
-	"main/pkg/exporter"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/rs/zerolog"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
