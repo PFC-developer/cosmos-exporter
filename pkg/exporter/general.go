@@ -21,7 +21,7 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"github.com/solarlabsteam/cosmos-exporter/pkg/cosmosdirectory"
+	"github.com/pfc-developer/cosmos-exporter/pkg/cosmosdirectory"
 )
 
 type GeneralMetrics struct {

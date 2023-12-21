@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"encoding/hex"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"net/http"
 	"sort"
 	"strconv"
@@ -328,12 +329,19 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Msg("Could not get validator pubkey")
 		}
+		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+		if err != nil {
+			sublogger.Error().
+				Str("address", validator.String()).
+				Err(err).
+				Msg("Could not get validatorcons from ConsAddressFromHex")
+		}
 
 		var signingInfo slashingtypes.ValidatorSigningInfo
 		found := false
 
 		for _, signingInfoIterated := range signingInfos {
-			if string(pubKey) == signingInfoIterated.Address {
+			if valcons.String() == signingInfoIterated.Address {
 				found = true
 				signingInfo = signingInfoIterated
 				break
@@ -344,7 +352,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 			slashingRes, err := slashingClient.SigningInfo(
 				context.Background(),
-				&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
+				&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
 			)
 			if err != nil {
 				sublogger.Debug().

@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"context"
+	"encoding/hex"
 	"net/http"
 	"sort"
 	"strconv"
@@ -296,11 +297,18 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				Err(err).
 				Msg("Could not get validator pubkey")
 		}
+		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+		if err != nil {
+			sublogger.Error().
+				Str("address", validatorAddress.String()).
+				Err(err).
+				Msg("Could not get validatorcons from ConsAddressFromHex")
+		}
 
 		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
 		)
 		if err != nil {
 			sublogger.Error().
