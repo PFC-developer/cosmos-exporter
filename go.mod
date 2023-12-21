@@ -2,7 +2,7 @@ module github.com/pfc-developer/cosmos-exporter
 
 go 1.21
 
-toolchain go1.21.5
+//toolchain go1.21.5
 
 require (
 	cosmossdk.io/api v0.7.2 // indirect
