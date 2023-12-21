@@ -33,15 +33,15 @@ builds:
       - linux
       - windows
       - darwin
-  - main: ./cmd/sei-cosmos-exporter
-    id: "sei-cosmos-exporter"
-    binary: "sei-cosmos-exporter"
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - windows
-      - darwin
+#  - main: ./cmd/sei-cosmos-exporter
+#    id: "sei-cosmos-exporter"
+#    binary: "sei-cosmos-exporter"
+#    env:
+#      - CGO_ENABLED=0
+#    goos:
+#      - linux
+#      - windows
+#      - darwin
   - main: ./cmd/inj-cosmos-exporter
     id: "inj-cosmos-exporter"
     binary: "inj-cosmos-exporter"
