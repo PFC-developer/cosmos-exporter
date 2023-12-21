@@ -20,11 +20,12 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  "cosmos-exporter",
+	Use:  "kuji-cosmos-exporter",
 	Long: "Scrape the data about the validators set, specific validators or wallets in the Cosmos network.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.ConfigPath == "" {
 			config.SetBechPrefixes(cmd)
+
 			return nil
 		}
 
@@ -64,8 +65,9 @@ func Execute(_ *cobra.Command, _ []string) {
 	}
 
 	zerolog.SetGlobalLevel(logLevel)
-
-	config.LogConfig(log.Info()).Msg("Started with following parameters")
+	config.LogConfig(log.Info()).
+		Str("--oracle", fmt.Sprintf("%t", config.Oracle)).
+		Msg("Started with following parameters")
 
 	sdkconfig := sdk.GetConfig()
 	sdkconfig.SetBech32PrefixForAccount(config.AccountPrefix, config.AccountPubkeyPrefix)
@@ -74,8 +76,8 @@ func Execute(_ *cobra.Command, _ []string) {
 	sdkconfig.Seal()
 
 	s := &exporter.Service{}
-
 	s.Log = log
+	// Setup gRPC connection
 	err = s.Connect(&config)
 
 	if err != nil {
@@ -90,7 +92,13 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	s.SetChainID(&config)
 	s.SetDenom(&config)
-
+	/*
+		eventCollector, err := NewEventCollector(TendermintRPC, log, BankTransferThreshold)
+		if err != nil {
+			panic(err)
+		}
+		eventCollector.Start(cmd.Context())
+	*/
 	s.Params = config.Params
 	s.Wallets = config.Wallets
 	s.Validators = config.Validators
@@ -102,7 +110,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	if config.SingleReq {
 		log.Info().Msg("Starting Single Mode")
-		http.HandleFunc("/metrics", s.SingleHandler)
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { KujiSingleHandler(w, r, s) })
 	}
 	http.HandleFunc("/metrics/wallet", s.WalletHandler)
 	http.HandleFunc("/metrics/validator", s.ValidatorHandler)
@@ -113,7 +121,9 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
-
+	if config.Prefix == "kujira" {
+		http.HandleFunc("/metrics/kujira", func(w http.ResponseWriter, r *http.Request) { KujiraMetricHandler(w, r, s) })
+	}
 	/*
 		if Prefix == "sei" {
 			http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
@@ -130,13 +140,14 @@ func Execute(_ *cobra.Command, _ []string) {
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
 	err = http.ListenAndServe(config.ListenAddress, nil) // #nosec
 	if err != nil {
-		log.Error().Err(err).Msg("Could not start application")
-		return
+		log.Fatal().Err(err).Msg("Could not start application")
 	}
 }
 
 func main() {
 	config.SetCommonParameters(rootCmd)
+
+	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

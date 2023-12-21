@@ -3,7 +3,6 @@ package exporter
 import (
 	"context"
 	"encoding/hex"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"net/http"
 	"sort"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
