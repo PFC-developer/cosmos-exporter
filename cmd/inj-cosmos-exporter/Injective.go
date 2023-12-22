@@ -4,9 +4,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
-	"main/pkg/exporter"
 	"net/http"
 	"strconv"
 	"sync"
@@ -15,6 +12,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 /*
@@ -68,8 +70,7 @@ type LastClaimEvent struct {
 	EventHeight string `json:"ethereum_event_height"`
 }
 
-func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMetrics, _ *exporter.Service, _ *exporter.ServiceConfig, orchestratorAddress sdk.AccAddress) {
-
+func doInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMetrics, _ *exporter.Service, _ *exporter.ServiceConfig, orchestratorAddress sdk.AccAddress) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -77,7 +78,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		queryStart := time.Now()
 
 		requestURL := fmt.Sprintf("%s/peggy/v1/module_state", LCD)
-		response, err := http.Get(requestURL)
+		response, err := http.Get(requestURL) // #nosec
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -114,7 +115,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		queryStart := time.Now()
 
 		requestURL := fmt.Sprintf("%s/peggy/v1/oracle/event/%s", LCD, orchestratorAddress.String())
-		response, err := http.Get(requestURL)
+		response, err := http.Get(requestURL) // #nosec
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -152,6 +153,7 @@ func getInjMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *InjMe
 		metrics.lastClaimedEvent.WithLabelValues("event_height").Add(eventHeight)
 	}()
 }
+
 func InjMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
 	requestStart := time.Now()
 
@@ -173,7 +175,7 @@ func InjMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 
 	var wg sync.WaitGroup
 
-	getInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, myAddress)
+	doInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, myAddress)
 
 	wg.Wait()
 

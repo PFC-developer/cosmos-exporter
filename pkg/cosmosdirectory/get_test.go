@@ -2,10 +2,11 @@ package cosmosdirectory_test
 
 import (
 	"fmt"
-	"main/pkg/cosmosdirectory"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/cosmosdirectory"
 )
 
 func TestGetChain(t *testing.T) {

@@ -3,9 +3,6 @@ package main
 
 import (
 	"context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
-	"main/pkg/exporter"
 	"net/http"
 	"sync"
 	"time"
@@ -13,7 +10,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	oracletypes "github.com/sei-protocol/sei-chain/x/oracle/types"
+	"github.com/rs/zerolog"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	oracletypes "github.com/pfc-developer/cosmos-exporter/cmd/sei-cosmos-exporter/types"
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 /*
@@ -43,6 +45,7 @@ func NewSeiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *S
 
 	return m
 }
+
 func getSeiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *SeiMetrics, s *exporter.Service, _ *exporter.ServiceConfig, validatorAddress sdk.ValAddress) {
 	wg.Add(1)
 
@@ -53,7 +56,6 @@ func getSeiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *SeiMe
 
 		oracleClient := oracletypes.NewQueryClient(s.GrpcConn)
 		response, err := oracleClient.VotePenaltyCounter(context.Background(), &oracletypes.QueryVotePenaltyCounterRequest{ValidatorAddr: validatorAddress.String()})
-
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -72,10 +74,9 @@ func getSeiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *SeiMe
 		metrics.votePenaltyCount.WithLabelValues("miss", validatorAddress.String()).Add(missCount)
 		metrics.votePenaltyCount.WithLabelValues("abstain", validatorAddress.String()).Add(abstainCount)
 		metrics.votePenaltyCount.WithLabelValues("success", validatorAddress.String()).Add(successCount)
-
 	}()
-
 }
+
 func OracleMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service, _ *exporter.ServiceConfig) {
 	requestStart := time.Now()
 

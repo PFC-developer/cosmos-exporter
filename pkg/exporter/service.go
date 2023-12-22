@@ -3,14 +3,16 @@ package exporter
 import (
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"math"
+	"strings"
+
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"math"
-	"strings"
+
+	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 type ServiceConfig struct {
@@ -81,6 +83,7 @@ func (s *Service) SetChainID(config *ServiceConfig) {
 		"chain_id": config.ChainID,
 	}
 }
+
 func (s *Service) Connect(config *ServiceConfig) error {
 	var err error
 	/*
@@ -95,12 +98,12 @@ func (s *Service) Connect(config *ServiceConfig) error {
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
-		//log.Fatal().Err(err).Msg("Could not connect to gRPC node")
 		return err
 	}
 
 	return nil
 }
+
 func (s *Service) Close() error {
 	err := s.GrpcConn.Close()
 	return err
@@ -150,7 +153,6 @@ func (s *Service) SetDenom(config *ServiceConfig) {
 }
 
 func (s *Service) checkAndHandleDenomInfoProvidedByUser(config *ServiceConfig) bool {
-
 	if config.Denom != "" {
 		if config.DenomCoefficient != 1 && config.DenomExponent != 0 {
 			s.Log.Fatal().Msg("denom-coefficient and denom-exponent are both provided. Must provide only one")
@@ -178,8 +180,8 @@ func (s *Service) checkAndHandleDenomInfoProvidedByUser(config *ServiceConfig) b
 	}
 
 	return false
-
 }
+
 func (s *Service) GetLatestBlock() (float64, error) {
 	serviceClient := tmservice.NewServiceClient(s.GrpcConn)
 	response, err := serviceClient.GetLatestBlock(
@@ -191,13 +193,11 @@ func (s *Service) GetLatestBlock() (float64, error) {
 	}
 	if response.GetSdkBlock() != nil {
 		return float64(response.GetSdkBlock().Header.Height), nil
-	} else {
-		return float64(response.GetBlock().Header.Height), nil
 	}
+	return float64(response.GetBlock().Header.Height), nil
 }
 
 func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
-
 	cmd.PersistentFlags().StringVar(&config.ConfigPath, "config", "", "Config file path")
 	cmd.PersistentFlags().StringVar(&config.Denom, "denom", "", "Cosmos coin denom")
 	cmd.PersistentFlags().Float64Var(&config.DenomCoefficient, "denom-coefficient", 1, "Denom coefficient")
@@ -228,6 +228,7 @@ func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(&config.PropV1, "propv1", false, "use PropV1 instead of PropV1Beta calls")
 	cmd.PersistentFlags().BoolVar(&config.Votes, "votes", false, "get validator votes on active proposals")
 }
+
 func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 	return event.
 		Str("--bech-account-prefix", config.AccountPrefix).
@@ -244,8 +245,8 @@ func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 		Str("--log-level", config.LogLevel).
 		Bool("--single", config.SingleReq).
 		Str("--tendermint-rpc", config.TendermintRPC).
-		Str("--wallets", strings.Join(config.Wallets[:], ",")).
-		Str("--validators", strings.Join(config.Validators[:], ",")).
+		Str("--wallets", strings.Join(config.Wallets, ",")).
+		Str("--validators", strings.Join(config.Validators, ",")).
 		Bool("--proposals", config.Proposals).
 		Bool("--params", config.Params).
 		Bool("--upgrades", config.Upgrades).

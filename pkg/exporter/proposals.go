@@ -4,21 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	govtypeV1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/query"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 )
 
 type ProposalsMetrics struct {
@@ -46,6 +47,7 @@ func NewProposalsMetrics(reg prometheus.Registerer, config *ServiceConfig) *Prop
 	reg.MustRegister(m.proposalsGauge)
 	return m
 }
+
 func NewValidatorVotingMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorVotingMetrics {
 	m := &ValidatorVotingMetrics{
 		validatorVoting: prometheus.NewGaugeVec(
@@ -70,40 +72,40 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 			sublogger.Debug().Msg("Started querying v1 proposals")
 			queryStart := time.Now()
 
-			govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+			govClient := govv1.NewQueryClient(s.GrpcConn)
 
-			var propReq govtypeV1.QueryProposalsRequest
+			var propReq govv1.QueryProposalsRequest
 			if activeOnly {
-				propReq = govtypeV1.QueryProposalsRequest{ProposalStatus: govtypeV1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+				propReq = govv1.QueryProposalsRequest{ProposalStatus: govv1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 			} else {
-				propReq = govtypeV1.QueryProposalsRequest{Pagination: &query.PageRequest{Reverse: true}}
+				propReq = govv1.QueryProposalsRequest{Pagination: &query.PageRequest{Reverse: true}}
 			}
 			proposalsResponse, err := govClient.Proposals(
 				context.Background(),
 				&propReq,
 			)
 			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get proposals")
+				sublogger.Error().Err(err).Msg("Could not get proposals (v1-props)")
 				return
 			}
 
 			sublogger.Debug().
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying proposals")
-			var proposals = proposalsResponse.Proposals
+			proposals := proposalsResponse.Proposals
 
 			sublogger.Debug().
 				Int("proposalsLength", len(proposals)).
 				Msg("Proposals info")
 
-			//cdcRegistry := codectypes.NewInterfaceRegistry()
-			//cdc := codec.NewProtoCodec(cdcRegistry)
+			// cdc := codec.NewProtoCodec(cdcRegistry)
 			for _, proposal := range proposals {
-				var title string = ""
+				var title string
 				if len(proposal.Metadata) > 0 {
 					var metadata proposalMeta
-					var t = strings.Trim(proposal.Metadata, " ")
-					if strings.HasPrefix(t, "{") {
+					t := strings.Trim(proposal.Metadata, " ")
+					switch {
+					case strings.HasPrefix(t, "{"):
 						err := json.Unmarshal([]byte(proposal.Metadata), &metadata)
 						if err != nil {
 							sublogger.Error().
@@ -113,9 +115,9 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 						} else {
 							title = metadata.Title
 						}
-					} else if strings.HasPrefix(t, "ipfs://") {
+					case strings.HasPrefix(t, "ipfs://"):
 						title = t
-					} else {
+					default:
 						title = fmt.Sprintf("Proposal %d has unknown metadata", proposal.Id)
 					}
 				} else {
@@ -164,7 +166,7 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				&propReq,
 			)
 			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get proposals")
+				sublogger.Error().Err(err).Msg("Could not get proposals (v1beta1-props)")
 				return
 			}
 
@@ -183,7 +185,6 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 
 				var content govtypes.TextProposal
 				err := cdc.Unmarshal(proposal.Content.Value, &content)
-
 				if err != nil {
 					sublogger.Error().
 						Str("proposal_id", fmt.Sprint(proposal.ProposalId)).
@@ -202,8 +203,8 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 		}()
 	}
 }
-func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorVotingMetrics, s *Service, _ *ServiceConfig, id uint64, validator types.ValAddress, wallet types.AccAddress) {
 
+func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorVotingMetrics, s *Service, _ *ServiceConfig, id uint64, validator types.ValAddress, wallet types.AccAddress) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -251,24 +252,22 @@ func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metr
 			}).Set(float64(voteOption.Size()))
 		}
 	}()
-
 }
+
 func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, error) {
 	sublogger.Debug().Msg("Started querying v1 proposals")
 	queryStart := time.Now()
 
-	govClient := govtypeV1.NewQueryClient(s.GrpcConn)
+	govClient := govv1.NewQueryClient(s.GrpcConn)
 
-	var propReq govtypeV1.QueryProposalsRequest
-
-	propReq = govtypeV1.QueryProposalsRequest{ProposalStatus: govtypeV1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+	propReq := govv1.QueryProposalsRequest{ProposalStatus: govv1.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 
 	proposalsResponse, err := govClient.Proposals(
 		context.Background(),
 		&propReq,
 	)
 	if err != nil {
-		sublogger.Error().Err(err).Msg("Could not get proposals")
+		sublogger.Error().Err(err).Msg("Could not get proposals-activeV1")
 		return nil, err
 	}
 
@@ -276,32 +275,29 @@ func (s *Service) GetActiveProposalsV1(sublogger *zerolog.Logger) ([]uint64, err
 		Float64("request-time", time.Since(queryStart).Seconds()).
 		Msg("Finished querying proposals")
 
-	//var x = [];
 	var proposals []uint64
 	for _, prop := range proposalsResponse.Proposals {
-		if prop.Status == govtypeV1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
+		if prop.Status == govv1.ProposalStatus_PROPOSAL_STATUS_VOTING_PERIOD {
 			proposals = append(proposals, prop.Id)
 		}
 	}
 	return proposals, nil
-
 }
+
 func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error) {
 	sublogger.Debug().Msg("Started querying v1 proposals")
 	queryStart := time.Now()
 
 	govClient := govtypes.NewQueryClient(s.GrpcConn)
 
-	var propReq govtypes.QueryProposalsRequest
-
-	propReq = govtypes.QueryProposalsRequest{ProposalStatus: govtypes.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
+	propReq := govtypes.QueryProposalsRequest{ProposalStatus: govtypes.StatusVotingPeriod, Pagination: &query.PageRequest{Reverse: true}}
 
 	proposalsResponse, err := govClient.Proposals(
 		context.Background(),
 		&propReq,
 	)
 	if err != nil {
-		sublogger.Error().Err(err).Msg("Could not get proposals")
+		sublogger.Error().Err(err).Msg("Could not get proposals-active")
 		return nil, err
 	}
 
@@ -315,8 +311,8 @@ func (s *Service) GetActiveProposals(sublogger *zerolog.Logger) ([]uint64, error
 		}
 	}
 	return proposals, nil
-
 }
+
 func (s *Service) ProposalsHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 

@@ -2,24 +2,26 @@ package exporter
 
 import (
 	"context"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"encoding/hex"
 	"net/http"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	querytypes "github.com/cosmos/cosmos-sdk/types/query"
-	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
+	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 type ValidatorMetrics struct {
@@ -43,7 +45,6 @@ type ValidatorExtendedMetrics struct {
 
 func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorMetrics {
 	m := &ValidatorMetrics{
-
 		tokensGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_tokens",
@@ -110,7 +111,6 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 
 func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *ValidatorExtendedMetrics {
 	m := &ValidatorExtendedMetrics{
-
 		delegationsGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_validator_delegations",
@@ -186,8 +186,8 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 
 	return m
 }
-func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress) *stakingtypes.QueryValidatorResponse {
 
+func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress) *stakingtypes.QueryValidatorResponse {
 	// doing this not in goroutine as we'll need the moniker value later
 	sublogger.Debug().
 		Str("address", validatorAddress.String()).
@@ -297,11 +297,18 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				Err(err).
 				Msg("Could not get validator pubkey")
 		}
+		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+		if err != nil {
+			sublogger.Error().
+				Str("address", validatorAddress.String()).
+				Err(err).
+				Msg("Could not get validatorcons from ConsAddressFromHex")
+		}
 
 		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
 		)
 		if err != nil {
 			sublogger.Error().
@@ -329,8 +336,8 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 
 	return validator
 }
-func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {
 
+func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -498,7 +505,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Finished querying validator unbonding delegations")
 
 		for _, unbonding := range stakingRes.UnbondingResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range unbonding.Entries {
 				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
 				if err != nil {
@@ -548,7 +555,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			Msg("Finished querying validator redelegations")
 
 		for _, redelegation := range stakingRes.RedelegationResponses {
-			var sum float64 = 0
+			var sum float64
 			for _, entry := range redelegation.Entries {
 				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
 				if err != nil {
@@ -681,8 +688,8 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			"moniker": moniker,
 		}).Set(active)
 	}()
-
 }
+
 func (s *Service) ValidatorHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 	sublogger := s.Log.With().

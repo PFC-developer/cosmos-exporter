@@ -3,8 +3,6 @@ package exporter
 import (
 	"context"
 	"encoding/hex"
-	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,13 +10,17 @@ import (
 	"sync"
 	"time"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	querytypes "github.com/cosmos/cosmos-sdk/types/query"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
+
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +150,6 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				},
 			)
-
 			if err != nil {
 				sublogger.Error().Err(err).Msg("Could not get validators")
 				return
@@ -328,12 +329,19 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 				Err(err).
 				Msg("Could not get validator pubkey")
 		}
+		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+		if err != nil {
+			sublogger.Error().
+				Str("address", validator.String()).
+				Err(err).
+				Msg("Could not get validatorcons from ConsAddressFromHex")
+		}
 
 		var signingInfo slashingtypes.ValidatorSigningInfo
 		found := false
 
 		for _, signingInfoIterated := range signingInfos {
-			if pubKey.String() == signingInfoIterated.Address {
+			if valcons.String() == signingInfoIterated.Address {
 				found = true
 				signingInfo = signingInfoIterated
 				break
@@ -344,7 +352,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 			slashingRes, err := slashingClient.SigningInfo(
 				context.Background(),
-				&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
+				&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
 			)
 			if err != nil {
 				sublogger.Debug().
@@ -388,7 +396,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			validatorsIsActiveGauge.With(prometheus.Labels{
 				"address":     validator.OperatorAddress,
 				"moniker":     validator.Description.Moniker,
-				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey.Bytes())),
+				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey)),
 			}).Set(active)
 		}
 	}

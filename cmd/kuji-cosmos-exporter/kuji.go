@@ -3,17 +3,19 @@ package main
 
 import (
 	"context"
-	oracletypes "github.com/Team-Kujira/core/x/oracle/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/rs/zerolog"
-	"main/pkg/exporter"
 	"net/http"
 	"sync"
 	"time"
 
+	oracletypes "github.com/Team-Kujira/core/x/oracle/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 /*
@@ -41,6 +43,7 @@ func NewKujiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *
 
 	return m
 }
+
 func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *KujiMetrics, s *exporter.Service, _ *exporter.ServiceConfig, validatorAddress sdk.ValAddress) {
 	wg.Add(1)
 
@@ -51,7 +54,6 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 
 		oracleClient := oracletypes.NewQueryClient(s.GrpcConn)
 		response, err := oracleClient.MissCounter(context.Background(), &oracletypes.QueryMissCounterRequest{ValidatorAddr: validatorAddress.String()})
-
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -66,9 +68,9 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 		missCount := float64(response.MissCounter)
 
 		metrics.votePenaltyCount.WithLabelValues("miss", validatorAddress.String()).Add(missCount)
-
 	}()
 }
+
 func KujiraMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
 	requestStart := time.Now()
 

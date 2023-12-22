@@ -2,18 +2,23 @@ package main
 
 import (
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"net/http"
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"main/pkg/exporter"
-	"net/http"
-	"os"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
-var config exporter.ServiceConfig
-var log = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+var (
+	config exporter.ServiceConfig
+	log    = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+)
 
 var rootCmd = &cobra.Command{
 	Use:  "sei-cosmos-exporter",
@@ -62,7 +67,7 @@ func Execute(_ *cobra.Command, _ []string) {
 	zerolog.SetGlobalLevel(logLevel)
 	config.LogConfig(log.Info()).
 		Str("--oracle", fmt.Sprintf("%t", config.Oracle)).
-		Float64("bank-transfer-threshold", config.BankTransferThreshold).
+		//	Float64("bank-transfer-threshold", config.BankTransferThreshold).
 		Msg("Started with following parameters")
 
 	sdkconfig := sdk.GetConfig()
@@ -138,7 +143,7 @@ func main() {
 	config.SetCommonParameters(rootCmd)
 
 	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
-	rootCmd.PersistentFlags().Float64Var(&config.BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")
+	//	rootCmd.PersistentFlags().Float64Var(&config.BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

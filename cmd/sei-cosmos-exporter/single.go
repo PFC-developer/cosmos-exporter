@@ -1,14 +1,17 @@
 package main
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"main/pkg/exporter"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
@@ -57,7 +60,7 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 		exporter.GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 	}
 	if upgradeMetrics != nil {
-		exporter.GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+		exporter.DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 	}
 	if len(s.Validators) > 0 {
 		// use 2 groups.
@@ -73,7 +76,6 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				val_wg.Add(1)
 				go func() {
@@ -124,14 +126,14 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals V1")
+						Msg("Could not get active proposals V1 (sei)")
 				}
 			} else {
 				activeProps, err = s.GetActiveProposals(&sublogger)
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals")
+						Msg("Could not get active proposals (sei)")
 				}
 			}
 		}()
@@ -145,7 +147,6 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				var accAddress sdk.AccAddress
 				err := accAddress.Unmarshal(valAddress.Bytes())
@@ -154,7 +155,6 @@ func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 						Str("address", validator).
 						Err(err).
 						Msg("Could not get acc address")
-
 				}
 				for _, propId := range activeProps {
 					exporter.GetProposalsVoteMetrics(&wg, &sublogger, validatorVotingMetrics, s, s.Config, propId, valAddress, accAddress)

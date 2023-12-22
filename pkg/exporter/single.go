@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"net/http"
 	"sync"
 	"time"
@@ -9,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +57,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 		GetParamsMetrics(&wg, &sublogger, paramsMetrics, s, s.Config)
 	}
 	if upgradeMetrics != nil {
-		GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+		DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 	}
 	if len(s.Validators) > 0 {
 		// use 2 groups.
@@ -72,15 +73,14 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				val_wg.Add(1)
-				go func() {
+				go func(validator string) {
 					defer val_wg.Done()
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
 					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
-				}()
+				}(validator)
 
 			}
 		}
@@ -103,14 +103,14 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals V1")
+						Msg("Could not get active proposals V1 (general)")
 				}
 			} else {
 				activeProps, err = s.GetActiveProposals(&sublogger)
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals")
+						Msg("Could not get active proposals (general)")
 				}
 			}
 		}()
@@ -124,7 +124,6 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 					Str("address", validator).
 					Err(err).
 					Msg("Could not get validator address")
-
 			} else {
 				var accAddress sdk.AccAddress
 				err := accAddress.Unmarshal(valAddress.Bytes())
@@ -133,7 +132,6 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 						Str("address", validator).
 						Err(err).
 						Msg("Could not get acc address")
-
 				}
 				for _, propId := range activeProps {
 					GetProposalsVoteMetrics(&wg, &sublogger, validatorVotingMetrics, s, s.Config, propId, valAddress, accAddress)

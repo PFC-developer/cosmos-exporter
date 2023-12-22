@@ -2,8 +2,6 @@ package exporter
 
 import (
 	"context"
-	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
-	"github.com/rs/zerolog"
 	"net/http"
 	"strconv"
 	"sync"
@@ -12,6 +10,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 )
 
 type UpgradeMetrics struct {
@@ -32,8 +33,8 @@ func NewUpgradeMetrics(reg prometheus.Registerer, config *ServiceConfig) *Upgrad
 	reg.MustRegister(m.upgradePlanGauge)
 	return m
 }
-func GetUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *Service, config *ServiceConfig) {
 
+func DoUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *UpgradeMetrics, s *Service, config *ServiceConfig) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -100,8 +101,8 @@ func GetUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *U
 			"estimated_time": estimatedTime.Local().Format(time.RFC1123),
 		}).Set(float64(remainingHeight))
 	}()
-
 }
+
 func (s *Service) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
@@ -113,7 +114,7 @@ func (s *Service) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
 	upgradeMetrics := NewUpgradeMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	GetUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
+	DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
 
 	wg.Wait()
 

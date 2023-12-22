@@ -2,18 +2,24 @@ package main
 
 import (
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"net/http"
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"main/pkg/exporter"
-	"net/http"
-	"os"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
-var config exporter.ServiceConfig
-var log = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+var (
+	config exporter.ServiceConfig
+	log    = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+)
+
 var (
 	Peggo        bool
 	LCD          string
@@ -135,9 +141,10 @@ func Execute(_ *cobra.Command, _ []string) {
 		})
 	*/
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
-	err = http.ListenAndServe(config.ListenAddress, nil)
+	err = http.ListenAndServe(config.ListenAddress, nil) // #nosec
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Error().Err(err).Msg("could not start application")
+		return
 	}
 }
 
