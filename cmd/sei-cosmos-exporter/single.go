@@ -14,7 +14,7 @@ import (
 	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
-func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
+func SeiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
 	requestStart := time.Now()
 
 	sublogger := log.With().
@@ -27,7 +27,7 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	var paramsMetrics *exporter.ParamsMetrics
 	var upgradeMetrics *exporter.UpgradeMetrics
 	var walletMetrics *exporter.WalletMetrics
-	var injMetrics *InjMetrics
+	var seiMetrics *SeiMetrics
 
 	var proposalMetrics *exporter.ProposalsMetrics
 	var validatorVotingMetrics *exporter.ValidatorVotingMetrics
@@ -44,12 +44,11 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	if s.Upgrades {
 		upgradeMetrics = exporter.NewUpgradeMetrics(registry, s.Config)
 	}
-
 	if s.Proposals {
 		proposalMetrics = exporter.NewProposalsMetrics(registry, s.Config)
 	}
-	if Peggo && Orchestrator != "" {
-		injMetrics = NewInjMetrics(registry, s.Config)
+	if s.Oracle {
+		seiMetrics = NewSeiMetrics(registry, s.Config)
 	}
 	if s.Config.Votes && len(s.Validators) > 0 {
 		validatorVotingMetrics = exporter.NewValidatorVotingMetrics(registry, s.Config)
@@ -62,33 +61,6 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	}
 	if upgradeMetrics != nil {
 		exporter.DoUpgradeMetrics(&wg, &sublogger, upgradeMetrics, s, s.Config)
-	}
-	if Orchestrator != "" && Peggo {
-		accAddress, err := sdk.AccAddressFromBech32(Orchestrator)
-		if err != nil {
-			sublogger.Error().
-				Str("address", Orchestrator).
-				Err(err).
-				Msg("doesn't appear valid")
-		} else {
-			doInjMetrics(&wg, &sublogger, injMetrics, s, s.Config, accAddress)
-		}
-	}
-	if len(s.Wallets) > 0 {
-		for _, wallet := range s.Wallets {
-			accAddress, err := sdk.AccAddressFromBech32(wallet)
-			if err != nil {
-				sublogger.Error().
-					Str("address", wallet).
-					Err(err).
-					Msg("Could not get wallet address")
-			} else {
-				exporter.GetWalletMetrics(&wg, &sublogger, walletMetrics, s, s.Config, accAddress, false)
-			}
-		}
-	}
-	if s.Proposals {
-		exporter.GetProposalsMetrics(&wg, &sublogger, proposalMetrics, s, s.Config, true)
 	}
 	if len(s.Validators) > 0 {
 		// use 2 groups.
@@ -106,16 +78,36 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 					Msg("Could not get validator address")
 			} else {
 				val_wg.Add(1)
-				go func(validator string) {
+				go func() {
 					defer val_wg.Done()
 					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
 
 					exporter.GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
-				}(validator)
+				}()
 
+				if s.Oracle {
+					sublogger.Debug().Str("address", validator).Msg("Fetching SEI details")
+					getSeiMetrics(&wg, &sublogger, seiMetrics, s, s.Config, valAddress)
+				}
 			}
 		}
 		val_wg.Wait()
+	}
+	if len(s.Wallets) > 0 {
+		for _, wallet := range s.Wallets {
+			accAddress, err := sdk.AccAddressFromBech32(wallet)
+			if err != nil {
+				sublogger.Error().
+					Str("address", wallet).
+					Err(err).
+					Msg("Could not get wallet address")
+			} else {
+				exporter.GetWalletMetrics(&wg, &sublogger, walletMetrics, s, s.Config, accAddress, false)
+			}
+		}
+	}
+	if s.Proposals {
+		exporter.GetProposalsMetrics(&wg, &sublogger, proposalMetrics, s, s.Config, true)
 	}
 	if s.Config.Votes && len(s.Validators) > 0 {
 		// use 2 groups.
@@ -134,14 +126,14 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals V1 (inj)")
+						Msg("Could not get active proposals V1 (sei)")
 				}
 			} else {
 				activeProps, err = s.GetActiveProposals(&sublogger)
 				if err != nil {
 					sublogger.Error().
 						Err(err).
-						Msg("Could not get active proposals (inj)")
+						Msg("Could not get active proposals (sei)")
 				}
 			}
 		}()
@@ -177,7 +169,7 @@ func InjSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Servic
 	sublogger.Info().
 		Str("method", "GET").
 		Str("endpoint", "/metrics").
-		Str("type", "injective").
+		Str("type", "sei").
 		Float64("request-time", time.Since(requestStart).Seconds()).
 		Msg("Request processed")
 }

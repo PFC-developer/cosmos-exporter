@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 var (

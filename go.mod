@@ -28,8 +28,6 @@ require (
 require (
 	github.com/Team-Kujira/core v0.9.2-0.20231211132814-115e931f7117
 	github.com/cometbft/cometbft v0.38.2
-	github.com/sei-protocol/sei-chain v0.1.429-bweng-test-1
-	github.com/solarlabsteam/cosmos-exporter v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -132,6 +130,7 @@ require (
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
+	github.com/sei-protocol/sei-chain v0.1.429-bweng-test-1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
@@ -166,4 +165,4 @@ require (
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-replace github.com/solarlabsteam/cosmos-exporter => ./
+replace github.com/pfc-developer/cosmos-exporter => ./

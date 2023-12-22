@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pfc-developer/cosmos-exporter/pkg/cosmosdirectory"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/cosmosdirectory"
 )
 
 func TestGetChain(t *testing.T) {

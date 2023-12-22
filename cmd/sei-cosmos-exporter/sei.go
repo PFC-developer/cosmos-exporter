@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	oracletypes "github.com/Team-Kujira/core/x/oracle/types"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,24 +14,27 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	oracletypes "github.com/pfc-developer/cosmos-exporter/cmd/sei-cosmos-exporter/types"
 	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 /*
-	type voteMissCounter struct {
-		MissCount string `json:"miss_count"`
+	type votePenaltyCounter struct {
+		MissCount    string `json:"miss_count"`
+		AbstainCount string `json:"abstain_count"`
+		SuccessCount string `json:"success_count"`
 	}
 */
-type KujiMetrics struct {
+type SeiMetrics struct {
 	votePenaltyCount *prometheus.CounterVec
 }
 
-func NewKujiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *KujiMetrics {
-	m := &KujiMetrics{
+func NewSeiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *SeiMetrics {
+	m := &SeiMetrics{
 		votePenaltyCount: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Name:        "cosmos_kujira_oracle_vote_miss_count",
-				Help:        "Vote miss count",
+				Name:        "cosmos_sei_oracle_vote_penalty_count",
+				Help:        "Vote penalty miss count",
 				ConstLabels: config.ConstLabels,
 			},
 			[]string{"type", "validator"},
@@ -44,7 +46,7 @@ func NewKujiMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *
 	return m
 }
 
-func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *KujiMetrics, s *exporter.Service, _ *exporter.ServiceConfig, validatorAddress sdk.ValAddress) {
+func getSeiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *SeiMetrics, s *exporter.Service, _ *exporter.ServiceConfig, validatorAddress sdk.ValAddress) {
 	wg.Add(1)
 
 	go func() {
@@ -53,7 +55,7 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 		queryStart := time.Now()
 
 		oracleClient := oracletypes.NewQueryClient(s.GrpcConn)
-		response, err := oracleClient.MissCounter(context.Background(), &oracletypes.QueryMissCounterRequest{ValidatorAddr: validatorAddress.String()})
+		response, err := oracleClient.VotePenaltyCounter(context.Background(), &oracletypes.QueryVotePenaltyCounterRequest{ValidatorAddr: validatorAddress.String()})
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -65,13 +67,17 @@ func getKujiMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Kuji
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying oracle feeder metrics")
 
-		missCount := float64(response.MissCounter)
+		missCount := float64(response.VotePenaltyCounter.MissCount)
+		abstainCount := float64(response.VotePenaltyCounter.AbstainCount)
+		successCount := float64(response.VotePenaltyCounter.SuccessCount)
 
 		metrics.votePenaltyCount.WithLabelValues("miss", validatorAddress.String()).Add(missCount)
+		metrics.votePenaltyCount.WithLabelValues("abstain", validatorAddress.String()).Add(abstainCount)
+		metrics.votePenaltyCount.WithLabelValues("success", validatorAddress.String()).Add(successCount)
 	}()
 }
 
-func KujiraMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {
+func OracleMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service, _ *exporter.ServiceConfig) {
 	requestStart := time.Now()
 
 	sublogger := s.Log.With().
@@ -87,11 +93,12 @@ func KujiraMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Ser
 			Msg("Could not get address")
 		return
 	}
+
 	registry := prometheus.NewRegistry()
-	kujiMetrics := NewKujiMetrics(registry, s.Config)
+	seiMetrics := NewSeiMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
-	getKujiMetrics(&wg, &sublogger, kujiMetrics, s, s.Config, myAddress)
+	getSeiMetrics(&wg, &sublogger, seiMetrics, s, s.Config, myAddress)
 
 	wg.Wait()
 
@@ -99,7 +106,7 @@ func KujiraMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Ser
 	h.ServeHTTP(w, r)
 	sublogger.Info().
 		Str("method", "GET").
-		Str("endpoint", "/metrics/kujira").
+		Str("endpoint", "/metrics/sei").
 		Float64("request-time", time.Since(requestStart).Seconds()).
 		Msg("Request processed")
 }

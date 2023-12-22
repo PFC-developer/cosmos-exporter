@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 func KujiSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {

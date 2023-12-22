@@ -21,7 +21,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  "kuji-cosmos-exporter",
+	Use:  "sei-cosmos-exporter",
 	Long: "Scrape the data about the validators set, specific validators or wallets in the Cosmos network.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.ConfigPath == "" {
@@ -47,7 +47,6 @@ var rootCmd = &cobra.Command{
 				}
 			}
 		})
-
 		config.SetBechPrefixes(cmd)
 
 		return nil
@@ -68,6 +67,7 @@ func Execute(_ *cobra.Command, _ []string) {
 	zerolog.SetGlobalLevel(logLevel)
 	config.LogConfig(log.Info()).
 		Str("--oracle", fmt.Sprintf("%t", config.Oracle)).
+		//	Float64("bank-transfer-threshold", config.BankTransferThreshold).
 		Msg("Started with following parameters")
 
 	sdkconfig := sdk.GetConfig()
@@ -78,7 +78,6 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	s := &exporter.Service{}
 	s.Log = log
-	// Setup gRPC connection
 	err = s.Connect(&config)
 
 	if err != nil {
@@ -93,13 +92,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	s.SetChainID(&config)
 	s.SetDenom(&config)
-	/*
-		eventCollector, err := NewEventCollector(TendermintRPC, log, BankTransferThreshold)
-		if err != nil {
-			panic(err)
-		}
-		eventCollector.Start(cmd.Context())
-	*/
+
 	s.Params = config.Params
 	s.Wallets = config.Wallets
 	s.Validators = config.Validators
@@ -108,10 +101,16 @@ func Execute(_ *cobra.Command, _ []string) {
 	s.Params = config.Params
 	s.Upgrades = config.Upgrades
 	s.Config = &config
-
+	/*
+		eventCollector, err := NewEventCollector(config.TendermintRPC, log, config.BankTransferThreshold, s.Config)
+		if err != nil {
+			panic(err)
+		}
+		eventCollector.Start(cmd.Context())
+	*/
 	if config.SingleReq {
 		log.Info().Msg("Starting Single Mode")
-		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { KujiSingleHandler(w, r, s) })
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { SeiSingleHandler(w, r, s) })
 	}
 	http.HandleFunc("/metrics/wallet", s.WalletHandler)
 	http.HandleFunc("/metrics/validator", s.ValidatorHandler)
@@ -122,24 +121,19 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
-	if config.Prefix == "kujira" {
-		http.HandleFunc("/metrics/kujira", func(w http.ResponseWriter, r *http.Request) { KujiraMetricHandler(w, r, s) })
-	}
-	/*
-		if Prefix == "sei" {
-			http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
-				OracleMetricHandler(w, r, s.grpcConn)
-			})
-		}
 
-	*/
+	if config.Prefix == "sei" {
+		http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
+			OracleMetricHandler(w, r, s, s.Config)
+		})
+	}
 	/*
 		http.HandleFunc("/metrics/event", func(w http.ResponseWriter, r *http.Request) {
 			eventCollector.StreamHandler(w, r)
 		})
 	*/
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
-	err = http.ListenAndServe(config.ListenAddress, nil) // #nosec
+	err = http.ListenAndServe(config.ListenAddress, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")
 	}
@@ -149,6 +143,7 @@ func main() {
 	config.SetCommonParameters(rootCmd)
 
 	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
+	//	rootCmd.PersistentFlags().Float64Var(&config.BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

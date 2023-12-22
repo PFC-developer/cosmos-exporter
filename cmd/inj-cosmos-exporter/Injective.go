@@ -16,7 +16,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/solarlabsteam/cosmos-exporter/pkg/exporter"
+	"github.com/pfc-developer/cosmos-exporter/pkg/exporter"
 )
 
 /*
