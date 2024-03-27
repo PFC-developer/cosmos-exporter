@@ -25,10 +25,10 @@ import (
 )
 
 type GeneralMetrics struct {
-	bondedTokensGauge        prometheus.Gauge
-	notBondedTokensGauge     prometheus.Gauge
-	communityPoolGauge       *prometheus.GaugeVec
-	supplyTotalGauge         *prometheus.GaugeVec
+	bondedTokensGauge    prometheus.Gauge
+	notBondedTokensGauge prometheus.Gauge
+	//	communityPoolGauge       *prometheus.GaugeVec
+	//	supplyTotalGauge         *prometheus.GaugeVec
 	latestBlockHeight        prometheus.Gauge
 	syncing                  prometheus.Gauge
 	tokenPrice               prometheus.Gauge
@@ -36,6 +36,10 @@ type GeneralMetrics struct {
 	// GetNodeInfo
 	applicationVersion *prometheus.GaugeVec
 	defaultNodeInfo    *prometheus.GaugeVec
+}
+type GeneralExtendedMetrics struct {
+	communityPoolGauge *prometheus.GaugeVec
+	supplyTotalGauge   *prometheus.GaugeVec
 }
 
 func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *GeneralMetrics {
@@ -54,22 +58,7 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 				ConstLabels: config.ConstLabels,
 			},
 		),
-		communityPoolGauge: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name:        "cosmos_general_community_pool",
-				Help:        "Community pool",
-				ConstLabels: config.ConstLabels,
-			},
-			[]string{"denom"},
-		),
-		supplyTotalGauge: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name:        "cosmos_general_supply_total",
-				Help:        "Total supply",
-				ConstLabels: config.ConstLabels,
-			},
-			[]string{"denom"},
-		),
+
 		latestBlockHeight: prometheus.NewGauge(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_latest_block_height",
@@ -118,8 +107,6 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 	}
 	reg.MustRegister(m.bondedTokensGauge)
 	reg.MustRegister(m.notBondedTokensGauge)
-	reg.MustRegister(m.communityPoolGauge)
-	reg.MustRegister(m.supplyTotalGauge)
 
 	// registry.MustRegister(generalInflationGauge)
 	// registry.MustRegister(generalAnnualProvisions)
@@ -156,6 +143,33 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 		)
 
 	*/
+}
+
+func NewGeneralExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *GeneralExtendedMetrics {
+	m := &GeneralExtendedMetrics{
+
+		communityPoolGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_general_community_pool",
+				Help:        "Community pool",
+				ConstLabels: config.ConstLabels,
+			},
+			[]string{"denom"},
+		),
+		supplyTotalGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_general_supply_total",
+				Help:        "Total supply",
+				ConstLabels: config.ConstLabels,
+			},
+			[]string{"denom"},
+		),
+	}
+	reg.MustRegister(m.communityPoolGauge)
+	reg.MustRegister(m.supplyTotalGauge)
+
+	return m
+
 }
 
 func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *Service, config *ServiceConfig) {
@@ -258,38 +272,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sublogger.Debug().Msg("Started querying distribution community pool")
-		queryStart := time.Now()
-
-		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
-		response, err := distributionClient.CommunityPool(
-			context.Background(),
-			&distributiontypes.QueryCommunityPoolRequest{},
-		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get distribution community pool")
-			return
-		}
-
-		sublogger.Debug().
-			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying distribution community pool")
-
-		for _, coin := range response.Pool {
-			if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
-				sublogger.Error().
-					Err(err).
-					Msg("Could not get community pool coin")
-			} else {
-				metrics.communityPoolGauge.With(prometheus.Labels{
-					"denom": config.Denom,
-				}).Set(value / config.DenomCoefficient)
-			}
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
 		sublogger.Debug().Msg("Started querying NodeInfo")
 		queryStart := time.Now()
 
@@ -324,51 +306,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		}).Set(float64(1))
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sublogger.Debug().Msg("Started querying bank total supply")
-		queryStart := time.Now()
-
-		bankClient := banktypes.NewQueryClient(s.GrpcConn)
-		response, err := bankClient.TotalSupply(
-			context.Background(),
-			&banktypes.QueryTotalSupplyRequest{},
-		)
-		for {
-			if err != nil {
-				sublogger.Error().Err(err).Msg("Could not get bank total supply")
-				return
-			}
-
-			sublogger.Debug().
-				Float64("request-time", time.Since(queryStart).Seconds()).
-				Msg("Finished querying bank total supply")
-
-			for _, coin := range response.Supply {
-				if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
-					sublogger.Error().
-						Err(err).
-						Msg("Could not get total supply")
-				} else {
-					metrics.supplyTotalGauge.With(prometheus.Labels{
-						"denom": coin.GetDenom(),
-					}).Set(value)
-				}
-			}
-			if response.Pagination.NextKey == nil {
-				break
-			}
-			response, err = bankClient.TotalSupply(
-				context.Background(),
-				&banktypes.QueryTotalSupplyRequest{
-					Pagination: &query.PageRequest{
-						Key: response.Pagination.NextKey,
-					},
-				},
-			)
-		}
-	}()
 	/*
 		wg.Add(1)
 		go func() {
@@ -474,6 +411,88 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 	}
 }
 
+func GetGeneralExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralExtendedMetrics, s *Service, config *ServiceConfig) {
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sublogger.Debug().Msg("Started querying distribution community pool")
+		queryStart := time.Now()
+
+		distributionClient := distributiontypes.NewQueryClient(s.GrpcConn)
+		response, err := distributionClient.CommunityPool(
+			context.Background(),
+			&distributiontypes.QueryCommunityPoolRequest{},
+		)
+		if err != nil {
+			sublogger.Error().Err(err).Msg("Could not get distribution community pool")
+			return
+		}
+
+		sublogger.Debug().
+			Float64("request-time", time.Since(queryStart).Seconds()).
+			Msg("Finished querying distribution community pool")
+
+		for _, coin := range response.Pool {
+			if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
+				sublogger.Error().
+					Err(err).
+					Msg("Could not get community pool coin")
+			} else {
+				metrics.communityPoolGauge.With(prometheus.Labels{
+					"denom": config.Denom,
+				}).Set(value / config.DenomCoefficient)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sublogger.Debug().Msg("Started querying bank total supply")
+		queryStart := time.Now()
+
+		bankClient := banktypes.NewQueryClient(s.GrpcConn)
+		response, err := bankClient.TotalSupply(
+			context.Background(),
+			&banktypes.QueryTotalSupplyRequest{},
+		)
+		for {
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get bank total supply")
+				return
+			}
+
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying bank total supply")
+
+			for _, coin := range response.Supply {
+				if value, err := strconv.ParseFloat(coin.Amount.String(), 64); err != nil {
+					sublogger.Error().
+						Err(err).
+						Msg("Could not get total supply")
+				} else {
+					metrics.supplyTotalGauge.With(prometheus.Labels{
+						"denom": coin.GetDenom(),
+					}).Set(value)
+				}
+			}
+			if response.Pagination.NextKey == nil {
+				break
+			}
+			response, err = bankClient.TotalSupply(
+				context.Background(),
+				&banktypes.QueryTotalSupplyRequest{
+					Pagination: &query.PageRequest{
+						Key: response.Pagination.NextKey,
+					},
+				},
+			)
+		}
+	}()
+}
+
 func (s *Service) GeneralHandler(w http.ResponseWriter, r *http.Request) {
 	requestStart := time.Now()
 
@@ -483,10 +502,12 @@ func (s *Service) GeneralHandler(w http.ResponseWriter, r *http.Request) {
 
 	registry := prometheus.NewRegistry()
 	generalMetrics := NewGeneralMetrics(registry, s.Config)
+	generalExtendedMetrics := NewGeneralExtendedMetrics(registry, s.Config)
 
 	var wg sync.WaitGroup
 
 	GetGeneralMetrics(&wg, &sublogger, generalMetrics, s, s.Config)
+	GetGeneralExtendedMetrics(&wg, &sublogger, generalExtendedMetrics, s, s.Config)
 
 	wg.Wait()
 
