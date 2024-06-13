@@ -147,7 +147,6 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 
 func NewGeneralExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) *GeneralExtendedMetrics {
 	m := &GeneralExtendedMetrics{
-
 		communityPoolGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        "cosmos_general_community_pool",
@@ -169,7 +168,6 @@ func NewGeneralExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig)
 	reg.MustRegister(m.supplyTotalGauge)
 
 	return m
-
 }
 
 func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralMetrics, s *Service, config *ServiceConfig) {
@@ -412,7 +410,6 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 }
 
 func GetGeneralExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *GeneralExtendedMetrics, s *Service, config *ServiceConfig) {
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

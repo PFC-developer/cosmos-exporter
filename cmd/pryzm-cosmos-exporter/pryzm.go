@@ -91,7 +91,6 @@ func doPryzmMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pryz
 		}
 		metrics.missCounter.WithLabelValues("miss").Add(missCount)
 	}()
-
 }
 
 func PryzmMetricHandler(w http.ResponseWriter, r *http.Request, s *exporter.Service) {

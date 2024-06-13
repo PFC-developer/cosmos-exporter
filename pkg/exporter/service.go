@@ -96,7 +96,6 @@ func (s *Service) Connect(config *ServiceConfig) error {
 	s.GrpcConn, err = grpc.Dial(
 		config.NodeAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
-
 	if err != nil {
 		return err
 	}

@@ -88,7 +88,6 @@ func Execute(_ *cobra.Command, _ []string) {
 
 	s.Log = log
 	err = s.Connect(&config)
-
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not connect to service")
 	}
