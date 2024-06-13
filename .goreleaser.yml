@@ -24,6 +24,7 @@ builds:
       - linux
       - windows
       - darwin
+
   - main: ./cmd/kuji-cosmos-exporter
     id: "kuji-cosmos-exporter"
     binary: "kuji-cosmos-exporter"
@@ -42,9 +43,20 @@ builds:
       - linux
       - windows
       - darwin
+
   - main: ./cmd/inj-cosmos-exporter
     id: "inj-cosmos-exporter"
     binary: "inj-cosmos-exporter"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+
+  - main: ./cmd/pryzm-cosmos-exporter
+    id: "pryzm-cosmos-exporter"
+    binary: "pryzm-cosmos-exporter"
     env:
       - CGO_ENABLED=0
     goos:
