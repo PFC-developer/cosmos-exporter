@@ -2,17 +2,20 @@ package exporter
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 type ServiceConfig struct {
@@ -42,20 +45,22 @@ type ServiceConfig struct {
 	DenomExponent    uint64
 
 	// SingleReq bundle up multiple requests into a single /metrics
-	SingleReq  bool
-	Wallets    []string
-	Validators []string
-	Oracle     bool
-	Upgrades   bool
-	Proposals  bool
-	Params     bool
-	TokenPrice bool
-	PropV1     bool
-	Votes      bool
+	SingleReq    bool
+	Wallets      []string
+	Validators   []string
+	Oracle       bool
+	Upgrades     bool
+	Proposals    bool
+	Params       bool
+	TokenPrice   bool
+	PropV1       bool
+	Votes        bool
+	ExternalGrpc string
 }
 
 type Service struct {
-	GrpcConn *grpc.ClientConn
+	GrpcConn         *grpc.ClientConn
+	ExternalGrpcConn *grpc.ClientConn
 	//	TmRPC      *tmrpc.HTTP
 	Wallets    []string
 	Validators []string
@@ -86,20 +91,38 @@ func (s *Service) SetChainID(config *ServiceConfig) {
 
 func (s *Service) Connect(config *ServiceConfig) error {
 	var err error
-	/*
-		s.TmRPC, err = tmrpc.New(config.TendermintRPC, "/websocket")
-		if err != nil {
-			//	log.Fatal().Err(err).Msg("Could not create Tendermint client")
-			return err
-		}
-	*/
-	s.GrpcConn, err = grpc.Dial(
+	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	if strings.Contains(config.NodeAddress, ":443") {
+		creds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{}))
+	}
+
+	s.GrpcConn, err = grpc.DialContext(ctx,
 		config.NodeAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		creds)
+	// grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	if err != nil {
 		return err
 	}
 
+	if config.ExternalGrpc == "" {
+		s.ExternalGrpcConn = nil
+	} else {
+		creds = grpc.WithTransportCredentials(insecure.NewCredentials())
+
+		if strings.Contains(config.ExternalGrpc, ":443") {
+			creds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{}))
+		}
+
+		s.ExternalGrpcConn, err = grpc.DialContext(ctx,
+			config.ExternalGrpc,
+			creds)
+		// grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -181,8 +204,8 @@ func (s *Service) checkAndHandleDenomInfoProvidedByUser(config *ServiceConfig) b
 	return false
 }
 
-func (s *Service) GetLatestBlock() (float64, error) {
-	serviceClient := tmservice.NewServiceClient(s.GrpcConn)
+func (s *Service) GetLatestBlock(conn *grpc.ClientConn) (float64, error) {
+	serviceClient := tmservice.NewServiceClient(conn)
 	response, err := serviceClient.GetLatestBlock(
 		context.Background(),
 		&tmservice.GetLatestBlockRequest{},
@@ -203,6 +226,7 @@ func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
 	cmd.PersistentFlags().Uint64Var(&config.DenomExponent, "denom-exponent", 0, "Denom exponent")
 	cmd.PersistentFlags().StringVar(&config.ListenAddress, "listen-address", ":9300", "The address this exporter would listen on")
 	cmd.PersistentFlags().StringVar(&config.NodeAddress, "node", "localhost:9090", "GRPC node address")
+	cmd.PersistentFlags().StringVar(&config.ExternalGrpc, "external-node", "", "GRPC node address")
 	cmd.PersistentFlags().StringVar(&config.LogLevel, "log-level", "info", "Logging level")
 	cmd.PersistentFlags().Uint64Var(&config.Limit, "limit", 1000, "Pagination limit for gRPC requests")
 	cmd.PersistentFlags().StringVar(&config.TendermintRPC, "tendermint-rpc", "http://localhost:26657", "Tendermint RPC address")
@@ -241,6 +265,7 @@ func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 		Str("--denom-exponent", fmt.Sprintf("%d", config.DenomExponent)).
 		Str("--listen-address", config.ListenAddress).
 		Str("--node", config.NodeAddress).
+		Str("--external-node", config.ExternalGrpc).
 		Str("--log-level", config.LogLevel).
 		Bool("--single", config.SingleReq).
 		Str("--tendermint-rpc", config.TendermintRPC).

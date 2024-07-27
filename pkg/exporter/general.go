@@ -29,10 +29,11 @@ type GeneralMetrics struct {
 	notBondedTokensGauge prometheus.Gauge
 	//	communityPoolGauge       *prometheus.GaugeVec
 	//	supplyTotalGauge         *prometheus.GaugeVec
-	latestBlockHeight        prometheus.Gauge
-	syncing                  prometheus.Gauge
-	tokenPrice               prometheus.Gauge
-	govVotingPeriodProposals prometheus.Gauge
+	latestBlockHeight         prometheus.Gauge
+	latestExternalBlockHeight prometheus.Gauge
+	syncing                   prometheus.Gauge
+	tokenPrice                prometheus.Gauge
+	govVotingPeriodProposals  prometheus.Gauge
 	// GetNodeInfo
 	applicationVersion *prometheus.GaugeVec
 	defaultNodeInfo    *prometheus.GaugeVec
@@ -63,6 +64,13 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 			prometheus.GaugeOpts{
 				Name:        "cosmos_latest_block_height",
 				Help:        "Latest block height",
+				ConstLabels: config.ConstLabels,
+			},
+		),
+		latestExternalBlockHeight: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_latest_block_height_external",
+				Help:        "Latest block height external source",
 				ConstLabels: config.ConstLabels,
 			},
 		),
@@ -112,6 +120,7 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 	// registry.MustRegister(generalAnnualProvisions)
 
 	reg.MustRegister(m.latestBlockHeight)
+	reg.MustRegister(m.latestExternalBlockHeight)
 	reg.MustRegister(m.syncing)
 	if config.TokenPrice {
 		reg.MustRegister(m.tokenPrice)
@@ -193,7 +202,7 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 		queryStart := time.Now()
 
-		latest, err := s.GetLatestBlock()
+		latest, err := s.GetLatestBlock(s.GrpcConn)
 		if err != nil {
 			sublogger.Error().Err(err).Msg("Could not get latest block height")
 			return
@@ -205,7 +214,28 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 
 		metrics.latestBlockHeight.Set(latest)
 	}()
+	if s.ExternalGrpcConn != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sublogger.Debug().Msg("Started querying latest block height (external)")
 
+			queryStart := time.Now()
+
+			latestExternal, err := s.GetLatestBlock(s.ExternalGrpcConn)
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get latest block height (external)")
+				return
+			}
+
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying block height (external)")
+			metrics.latestExternalBlockHeight.Set(latestExternal)
+		}()
+	} else {
+		metrics.latestExternalBlockHeight.Set(-1.0)
+	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
