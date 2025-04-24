@@ -21,7 +21,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  "kuji-cosmos-exporter",
+	Use:  "initia-cosmos-exporter",
 	Long: "Scrape the data about the validators set, specific validators or wallets in the Cosmos network.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if config.ConfigPath == "" {
@@ -106,11 +106,12 @@ func Execute(_ *cobra.Command, _ []string) {
 	s.Oracle = config.Oracle
 	s.Params = config.Params
 	s.Upgrades = config.Upgrades
+	s.ValidatorCons = config.ValidatorCons
 	s.Config = &config
 
 	if config.SingleReq {
 		log.Info().Msg("Starting Single Mode")
-		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { KujiSingleHandler(w, r, s) })
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { InitiaSingleHandler(w, r, s) })
 	}
 	http.HandleFunc("/metrics/wallet", s.WalletHandler)
 	http.HandleFunc("/metrics/validator", s.ValidatorHandler)
@@ -121,8 +122,8 @@ func Execute(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/metrics/delegator", s.DelegatorHandler)
 	http.HandleFunc("/metrics/proposals", s.ProposalsHandler)
 	http.HandleFunc("/metrics/upgrade", s.UpgradeHandler)
-	if config.Prefix == "kujira" {
-		http.HandleFunc("/metrics/kujira", func(w http.ResponseWriter, r *http.Request) { KujiraMetricHandler(w, r, s) })
+	if config.Prefix == "init" {
+		http.HandleFunc("/metrics/initia", func(w http.ResponseWriter, r *http.Request) { InitiaMetricHandler(w, r, s) })
 	}
 	/*
 		if Prefix == "sei" {
@@ -146,8 +147,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 func main() {
 	config.SetCommonParameters(rootCmd)
-	config.SetIsInitia(false)
-
+	config.SetIsInitia(true)
 	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
 
 	if err := rootCmd.Execute(); err != nil {

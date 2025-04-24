@@ -45,17 +45,19 @@ type ServiceConfig struct {
 	DenomExponent    uint64
 
 	// SingleReq bundle up multiple requests into a single /metrics
-	SingleReq    bool
-	Wallets      []string
-	Validators   []string
-	Oracle       bool
-	Upgrades     bool
-	Proposals    bool
-	Params       bool
-	TokenPrice   bool
-	PropV1       bool
-	Votes        bool
-	ExternalGrpc string
+	SingleReq     bool
+	Wallets       []string
+	Validators    []string
+	Oracle        bool
+	Upgrades      bool
+	Proposals     bool
+	Params        bool
+	TokenPrice    bool
+	PropV1        bool
+	Votes         bool
+	ExternalGrpc  string
+	Initia        bool // little bit hacky I know
+	ValidatorCons []string
 }
 
 type Service struct {
@@ -70,6 +72,8 @@ type Service struct {
 	Params     bool
 	Config     *ServiceConfig
 	Log        zerolog.Logger
+	// only used in Initia for now
+	ValidatorCons []string
 }
 
 func (s *Service) SetChainID(config *ServiceConfig) {
@@ -248,6 +252,7 @@ func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVar(&config.TokenPrice, "price", true, "fetch token price")
 	cmd.PersistentFlags().StringSliceVar(&config.Wallets, "wallets", nil, "serve info about passed wallets")
 	cmd.PersistentFlags().StringSliceVar(&config.Validators, "validators", nil, "serve info about passed validators")
+	cmd.PersistentFlags().StringSliceVar(&config.ValidatorCons, "validatorcons", nil, "serve info about passed validatorcons (initia only)")
 	cmd.PersistentFlags().BoolVar(&config.PropV1, "propv1", false, "use PropV1 instead of PropV1Beta calls")
 	cmd.PersistentFlags().BoolVar(&config.Votes, "votes", false, "get validator votes on active proposals")
 }
@@ -271,12 +276,16 @@ func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 		Str("--tendermint-rpc", config.TendermintRPC).
 		Str("--wallets", strings.Join(config.Wallets, ",")).
 		Str("--validators", strings.Join(config.Validators, ",")).
+		Str("--validatorcons", strings.Join(config.Validators, ",")).
 		Bool("--proposals", config.Proposals).
 		Bool("--params", config.Params).
 		Bool("--upgrades", config.Upgrades).
 		Bool("--price", config.TokenPrice).
 		Bool("--propv1", config.PropV1).
 		Bool("--votes", config.Votes)
+}
+func (config *ServiceConfig) SetIsInitia(flag bool) {
+	config.Initia = flag
 }
 
 func (config *ServiceConfig) SetBechPrefixes(cmd *cobra.Command) {

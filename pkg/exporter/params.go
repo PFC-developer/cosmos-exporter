@@ -194,7 +194,7 @@ func GetParamsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Pa
 	}()
 	wg.Add(1)
 
-	if config.Prefix != "sei" {
+	if config.Prefix != "sei" && !config.Initia {
 		go func() {
 			defer wg.Done()
 			sublogger.Debug().Msg("Started querying global mint params")

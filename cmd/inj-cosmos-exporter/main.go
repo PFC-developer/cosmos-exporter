@@ -151,6 +151,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolVar(&Peggo, "peggo", false, "serve peggo info in the single call to /metrics")
 	rootCmd.PersistentFlags().StringVar(&LCD, "lcd", "http://localhost:1317", "LCD endpoint")
 	rootCmd.PersistentFlags().StringVar(&Orchestrator, "orchestrator", "inj...", "orchestrator wallet")
+	config.SetIsInitia(false)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

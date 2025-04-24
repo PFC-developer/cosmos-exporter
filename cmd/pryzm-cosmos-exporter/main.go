@@ -135,6 +135,8 @@ func Execute(_ *cobra.Command, _ []string) {
 
 func main() {
 	config.SetCommonParameters(rootCmd)
+	config.SetIsInitia(false)
+
 	rootCmd.PersistentFlags().BoolVar(&Oracle, "oracle", false, "serve pryzm oracle info in the single call to /metrics")
 	rootCmd.PersistentFlags().StringVar(&LCD, "lcd", "http://localhost:1317", "LCD endpoint")
 

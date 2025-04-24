@@ -140,6 +140,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 func main() {
 	config.SetCommonParameters(rootCmd)
+	config.SetIsInitia(false)
 
 	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
 	//	rootCmd.PersistentFlags().Float64Var(&config.BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")

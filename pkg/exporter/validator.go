@@ -270,71 +270,132 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		"moniker": validator.Validator.Description.Moniker,
 	}).Set(jailed)
 
+	pubKey, err := validator.Validator.GetConsAddr()
+	if err != nil {
+		sublogger.Error().
+			Str("address", validatorAddress.String()).
+			Err(err).
+			Msg("Could not get validator pubkey")
+	}
+	valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+	if err != nil {
+		sublogger.Error().
+			Str("address", validatorAddress.String()).
+			Err(err).
+			Msg("Could not get validatorcons from ConsAddressFromHex")
+	}
+	GetValidatorBasicMetricsTM(wg, sublogger, metrics, s, config, validatorAddress.String(), validator.Validator.Description.GetMoniker(), valcons.String())
+	/*
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sublogger.Debug().
+				Str("address", validatorAddress.String()).
+				Msg("Started querying validator signing info")
+			queryStart := time.Now()
+			interfaceRegistry := codectypes.NewInterfaceRegistry()
+
+			crytpocode.RegisterInterfaces(interfaceRegistry)
+
+			err := validator.Validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
+			if err != nil {
+				sublogger.Error().
+					Str("address", validatorAddress.String()).
+					Err(err).
+					Msg("Could not get unpack validator inferfaces")
+			}
+
+			pubKey, err := validator.Validator.GetConsAddr()
+			if err != nil {
+				sublogger.Error().
+					Str("address", validatorAddress.String()).
+					Err(err).
+					Msg("Could not get validator pubkey")
+			}
+			valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
+			if err != nil {
+				sublogger.Error().
+					Str("address", validatorAddress.String()).
+					Err(err).
+					Msg("Could not get validatorcons from ConsAddressFromHex")
+			}
+
+			slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
+			slashingRes, err := slashingClient.SigningInfo(
+				context.Background(),
+				&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
+			)
+			if err != nil {
+				sublogger.Error().
+					Str("address", validatorAddress.String()).
+					Err(err).
+					Msg("Could not get validator signing info")
+				return
+			}
+
+			sublogger.Debug().
+				Str("address", validatorAddress.String()).
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying validator signing info")
+
+			sublogger.Debug().
+				Str("address", validatorAddress.String()).
+				Int64("missedBlocks", slashingRes.ValSigningInfo.MissedBlocksCounter).
+				Msg("Finished querying validator signing info")
+
+			metrics.missedBlocksGauge.With(prometheus.Labels{
+				"moniker": validator.Validator.Description.Moniker,
+				"address": validatorAddress.String(),
+			}).Set(float64(slashingRes.ValSigningInfo.MissedBlocksCounter))
+		}()
+	*/
+	return validator
+}
+
+func GetValidatorBasicMetricsTM(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, moniker string, validatorAddress string, validatorCons string) {
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str("consaddress", validatorCons).
 			Msg("Started querying validator signing info")
 		queryStart := time.Now()
-		interfaceRegistry := codectypes.NewInterfaceRegistry()
+		//	interfaceRegistry := codectypes.NewInterfaceRegistry()
 
-		crytpocode.RegisterInterfaces(interfaceRegistry)
-
-		err := validator.Validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
-		if err != nil {
-			sublogger.Error().
-				Str("address", validatorAddress.String()).
-				Err(err).
-				Msg("Could not get unpack validator inferfaces")
-		}
-
-		pubKey, err := validator.Validator.GetConsAddr()
-		if err != nil {
-			sublogger.Error().
-				Str("address", validatorAddress.String()).
-				Err(err).
-				Msg("Could not get validator pubkey")
-		}
-		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
-		if err != nil {
-			sublogger.Error().
-				Str("address", validatorAddress.String()).
-				Err(err).
-				Msg("Could not get validatorcons from ConsAddressFromHex")
-		}
+		//crytpocode.RegisterInterfaces(interfaceRegistry)
 
 		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: valcons.String()},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: validatorCons},
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str("consaddress", validatorCons).
 				Err(err).
 				Msg("Could not get validator signing info")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str("consaddress", validatorCons).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator signing info")
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str("consaddress", validatorCons).
 			Int64("missedBlocks", slashingRes.ValSigningInfo.MissedBlocksCounter).
 			Msg("Finished querying validator signing info")
 
 		metrics.missedBlocksGauge.With(prometheus.Labels{
-			"moniker": validator.Validator.Description.Moniker,
-			"address": validatorAddress.String(),
+			"moniker": moniker,
+			"address": validatorAddress,
 		}).Set(float64(slashingRes.ValSigningInfo.MissedBlocksCounter))
 	}()
 
-	return validator
 }
 
 func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {

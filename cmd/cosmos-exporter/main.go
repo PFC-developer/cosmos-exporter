@@ -137,6 +137,7 @@ func Execute(_ *cobra.Command, _ []string) {
 
 func main() {
 	config.SetCommonParameters(rootCmd)
+	config.SetIsInitia(false)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")

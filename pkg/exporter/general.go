@@ -265,37 +265,41 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sublogger.Debug().Msg("Started querying staking pool")
-		queryStart := time.Now()
+	if config.Initia {
+		sublogger.Debug().Msg("Skipping querying staking pool")
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sublogger.Debug().Msg("Started querying staking pool")
+			queryStart := time.Now()
 
-		stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
-		response, err := stakingClient.Pool(
-			context.Background(),
-			&stakingtypes.QueryPoolRequest{},
-		)
-		if err != nil {
-			sublogger.Error().Err(err).Msg("Could not get staking pool")
-			return
-		}
+			stakingClient := stakingtypes.NewQueryClient(s.GrpcConn)
+			response, err := stakingClient.Pool(
+				context.Background(),
+				&stakingtypes.QueryPoolRequest{},
+			)
+			if err != nil {
+				sublogger.Error().Err(err).Msg("Could not get staking pool")
+				return
+			}
 
-		sublogger.Debug().
-			Float64("request-time", time.Since(queryStart).Seconds()).
-			Msg("Finished querying staking pool")
+			sublogger.Debug().
+				Float64("request-time", time.Since(queryStart).Seconds()).
+				Msg("Finished querying staking pool")
 
-		bondedTokensBigInt := response.Pool.BondedTokens.BigInt()
-		bondedTokens, _ := new(big.Float).SetInt(bondedTokensBigInt).Float64()
+			bondedTokensBigInt := response.Pool.BondedTokens.BigInt()
+			bondedTokens, _ := new(big.Float).SetInt(bondedTokensBigInt).Float64()
 
-		notBondedTokensBigInt := response.Pool.NotBondedTokens.BigInt()
-		notBondedTokens, _ := new(big.Float).SetInt(notBondedTokensBigInt).Float64()
+			notBondedTokensBigInt := response.Pool.NotBondedTokens.BigInt()
+			notBondedTokens, _ := new(big.Float).SetInt(notBondedTokensBigInt).Float64()
 
-		metrics.bondedTokensGauge.Set(bondedTokens)
-		metrics.notBondedTokensGauge.Set(notBondedTokens)
+			metrics.bondedTokensGauge.Set(bondedTokens)
+			metrics.notBondedTokensGauge.Set(notBondedTokens)
 
-		// generalNotBondedTokensGauge.Set(float64(response.Pool.NotBondedTokens.Int64()))
-	}()
+			// generalNotBondedTokensGauge.Set(float64(response.Pool.NotBondedTokens.Int64()))
+		}()
+	}
 
 	wg.Add(1)
 	go func() {

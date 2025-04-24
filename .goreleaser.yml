@@ -64,6 +64,16 @@ builds:
       - windows
       - darwin
 
+  - main: ./cmd/initia-cosmos-exporter
+    id: "initia-cosmos-exporter"
+    binary: "initia-cosmos-exporter"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
