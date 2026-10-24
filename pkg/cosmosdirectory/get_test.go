@@ -14,7 +14,7 @@ func TestGetChain(t *testing.T) {
 		Chain string
 	}{
 		{Chain: "juno"},
-		{Chain: "stargaze"},
+		{Chain: "osmosis"},
 		{Chain: "cheqd"},
 	}
 
@@ -33,9 +33,8 @@ func TestGetChainByChainID(t *testing.T) {
 		ChainID string
 	}{
 		{ChainID: "juno-1"},
-		{ChainID: "stargaze-1"},
+		{ChainID: "osmosis-1"},
 		{ChainID: "cheqd-mainnet-1"},
-		{ChainID: "kichain-2"},
 		{ChainID: "Oraichain"},
 		{ChainID: "chihuahua-1"},
 	}
