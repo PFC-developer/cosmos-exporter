@@ -15,8 +15,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	//codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	//k	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
+	// codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	// k	crytpocode "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
@@ -51,7 +51,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "Tokens of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom"},
+			[]string{labelAddress, labelMoniker, labelDenom},
 		),
 
 		delegatorSharesGauge: prometheus.NewGaugeVec(
@@ -60,7 +60,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "Delegators shares of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom"},
+			[]string{labelAddress, labelMoniker, labelDenom},
 		),
 
 		commissionRateGauge: prometheus.NewGaugeVec(
@@ -69,7 +69,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "Commission rate of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 
 		statusGauge: prometheus.NewGaugeVec(
@@ -78,7 +78,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "Status of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 
 		jailedGauge: prometheus.NewGaugeVec(
@@ -87,7 +87,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "1 if the Cosmos-based blockchain validator is jailed, 0 if no",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 		missedBlocksGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -95,7 +95,7 @@ func NewValidatorMetrics(reg prometheus.Registerer, config *ServiceConfig) *Vali
 				Help:        "Missed blocks of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 	}
 
@@ -117,7 +117,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Delegations of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom", "delegated_by"},
+			[]string{labelAddress, labelMoniker, labelDenom, "delegated_by"},
 		),
 
 		commissionGauge: prometheus.NewGaugeVec(
@@ -126,7 +126,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Commission of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom"},
+			[]string{labelAddress, labelMoniker, labelDenom},
 		),
 		rewardsGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -134,7 +134,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Rewards of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom"},
+			[]string{labelAddress, labelMoniker, labelDenom},
 		),
 
 		unbondingsGauge: prometheus.NewGaugeVec(
@@ -143,7 +143,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Unbondings of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom", "unbonded_by"},
+			[]string{labelAddress, labelMoniker, labelDenom, "unbonded_by"},
 		),
 
 		redelegationsGauge: prometheus.NewGaugeVec(
@@ -152,7 +152,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Redelegations of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker", "denom", "redelegated_by", "redelegated_to"},
+			[]string{labelAddress, labelMoniker, labelDenom, "redelegated_by", labelRedelegatedTo},
 		),
 
 		rankGauge: prometheus.NewGaugeVec(
@@ -161,7 +161,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "Rank of the Cosmos-based blockchain validator",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 
 		isActiveGauge: prometheus.NewGaugeVec(
@@ -170,7 +170,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 				Help:        "1 if the Cosmos-based blockchain validator is in active set, 0 if no",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "moniker"},
+			[]string{labelAddress, labelMoniker},
 		),
 	}
 
@@ -190,7 +190,7 @@ func NewValidatorExtendedMetrics(reg prometheus.Registerer, config *ServiceConfi
 func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress) *stakingtypes.QueryValidatorResponse {
 	// doing this not in goroutine as we'll need the moniker value later
 	sublogger.Debug().
-		Str("address", validatorAddress.String()).
+		Str(labelAddress, validatorAddress.String()).
 		Msg("Started querying validator")
 	validatorQueryStart := time.Now()
 
@@ -201,60 +201,60 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 	)
 	if err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not get validator")
 		return nil
 	}
 
 	sublogger.Debug().
-		Str("address", validatorAddress.String()).
+		Str(labelAddress, validatorAddress.String()).
 		Float64("request-time", time.Since(validatorQueryStart).Seconds()).
 		Msg("Finished querying validator")
 
 	if value, err := strconv.ParseFloat(validator.Validator.Tokens.String(), 64); err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not parse validator tokens")
 	} else {
 		metrics.tokensGauge.With(prometheus.Labels{
-			"address": validator.Validator.OperatorAddress,
-			"moniker": validator.Validator.Description.Moniker,
-			"denom":   config.Denom,
+			labelAddress: validator.Validator.OperatorAddress,
+			labelMoniker: validator.Validator.Description.Moniker,
+			labelDenom:   config.Denom,
 		}).Set(value / config.DenomCoefficient)
 	}
 
 	// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 	if value, err := strconv.ParseFloat(validator.Validator.DelegatorShares.String(), 64); err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not parse delegator shares")
 	} else {
 		metrics.delegatorSharesGauge.With(prometheus.Labels{
-			"address": validator.Validator.OperatorAddress,
-			"moniker": validator.Validator.Description.Moniker,
-			"denom":   config.Denom,
+			labelAddress: validator.Validator.OperatorAddress,
+			labelMoniker: validator.Validator.Description.Moniker,
+			labelDenom:   config.Denom,
 		}).Set(value / config.DenomCoefficient)
 	}
 
 	// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-	if rate, err := strconv.ParseFloat(validator.Validator.Commission.CommissionRates.Rate.String(), 64); err != nil {
+	if rate, err := strconv.ParseFloat(validator.Validator.Commission.Rate.String(), 64); err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not parse commission rate")
 	} else {
 		metrics.commissionRateGauge.With(prometheus.Labels{
-			"address": validator.Validator.OperatorAddress,
-			"moniker": validator.Validator.Description.Moniker,
+			labelAddress: validator.Validator.OperatorAddress,
+			labelMoniker: validator.Validator.Description.Moniker,
 		}).Set(rate)
 	}
 
 	metrics.statusGauge.With(prometheus.Labels{
-		"address": validator.Validator.OperatorAddress,
-		"moniker": validator.Validator.Description.Moniker,
+		labelAddress: validator.Validator.OperatorAddress,
+		labelMoniker: validator.Validator.Description.Moniker,
 	}).Set(float64(validator.Validator.Status))
 
 	// golang doesn't have a ternary operator, so we have to stick with this ugly solution
@@ -266,21 +266,21 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		jailed = 0
 	}
 	metrics.jailedGauge.With(prometheus.Labels{
-		"address": validator.Validator.OperatorAddress,
-		"moniker": validator.Validator.Description.Moniker,
+		labelAddress: validator.Validator.OperatorAddress,
+		labelMoniker: validator.Validator.Description.Moniker,
 	}).Set(jailed)
 
 	pubKey, err := validator.Validator.GetConsAddr()
 	if err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not get validator pubkey")
 	}
 	valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
 	if err != nil {
 		sublogger.Error().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Err(err).
 			Msg("Could not get validatorcons from ConsAddressFromHex")
 	}
@@ -291,7 +291,7 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			defer wg.Done()
 
 			sublogger.Debug().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Msg("Started querying validator signing info")
 			queryStart := time.Now()
 			interfaceRegistry := codectypes.NewInterfaceRegistry()
@@ -301,7 +301,7 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			err := validator.Validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
 			if err != nil {
 				sublogger.Error().
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Err(err).
 					Msg("Could not get unpack validator inferfaces")
 			}
@@ -309,14 +309,14 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			pubKey, err := validator.Validator.GetConsAddr()
 			if err != nil {
 				sublogger.Error().
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Err(err).
 					Msg("Could not get validator pubkey")
 			}
 			valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
 			if err != nil {
 				sublogger.Error().
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Err(err).
 					Msg("Could not get validatorcons from ConsAddressFromHex")
 			}
@@ -328,25 +328,25 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			)
 			if err != nil {
 				sublogger.Error().
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Err(err).
 					Msg("Could not get validator signing info")
 				return
 			}
 
 			sublogger.Debug().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying validator signing info")
 
 			sublogger.Debug().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Int64("missedBlocks", slashingRes.ValSigningInfo.MissedBlocksCounter).
 				Msg("Finished querying validator signing info")
 
 			metrics.missedBlocksGauge.With(prometheus.Labels{
-				"moniker": validator.Validator.Description.Moniker,
-				"address": validatorAddress.String(),
+				labelMoniker: validator.Validator.Description.Moniker,
+				labelAddress: validatorAddress.String(),
 			}).Set(float64(slashingRes.ValSigningInfo.MissedBlocksCounter))
 		}()
 	*/
@@ -354,7 +354,6 @@ func GetValidatorBasicMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 }
 
 func GetValidatorBasicMetricsTM(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorMetrics, s *Service, config *ServiceConfig, moniker string, validatorAddress string, validatorCons string) {
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -365,7 +364,7 @@ func GetValidatorBasicMetricsTM(wg *sync.WaitGroup, sublogger *zerolog.Logger, m
 		queryStart := time.Now()
 		//	interfaceRegistry := codectypes.NewInterfaceRegistry()
 
-		//crytpocode.RegisterInterfaces(interfaceRegistry)
+		// crytpocode.RegisterInterfaces(interfaceRegistry)
 
 		slashingClient := slashingtypes.NewQueryClient(s.GrpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
@@ -391,11 +390,10 @@ func GetValidatorBasicMetricsTM(wg *sync.WaitGroup, sublogger *zerolog.Logger, m
 			Msg("Finished querying validator signing info")
 
 		metrics.missedBlocksGauge.With(prometheus.Labels{
-			"moniker": moniker,
-			"address": validatorAddress,
+			labelMoniker: moniker,
+			labelAddress: validatorAddress,
 		}).Set(float64(slashingRes.ValSigningInfo.MissedBlocksCounter))
 	}()
-
 }
 
 func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *ValidatorExtendedMetrics, s *Service, config *ServiceConfig, validatorAddress sdk.ValAddress, moniker string, validator *stakingtypes.QueryValidatorResponse) {
@@ -404,7 +402,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator delegations")
 		queryStart := time.Now()
 
@@ -420,14 +418,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get validator delegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator delegations")
 
@@ -436,13 +434,13 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			if err != nil {
 				log.Error().
 					Err(err).
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Msg("Could not convert delegation entry")
 			} else {
 				metrics.delegationsGauge.With(prometheus.Labels{
-					"moniker":      moniker,
-					"address":      delegation.Delegation.ValidatorAddress,
-					"denom":        config.Denom,
+					labelMoniker:   moniker,
+					labelAddress:   delegation.Delegation.ValidatorAddress,
+					labelDenom:     config.Denom,
 					"delegated_by": delegation.Delegation.DelegatorAddress,
 				}).Set(value / config.DenomCoefficient)
 			}
@@ -454,7 +452,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator commission")
 		queryStart := time.Now()
 
@@ -465,14 +463,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get validator commission")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator commission")
 
@@ -482,13 +480,13 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			if err != nil {
 				log.Error().
 					Err(err).
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Msg("Could not get validator commission")
 			} else {
 				metrics.commissionGauge.With(prometheus.Labels{
-					"address": validatorAddress.String(),
-					"moniker": moniker,
-					"denom":   config.Denom,
+					labelAddress: validatorAddress.String(),
+					labelMoniker: moniker,
+					labelDenom:   config.Denom,
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
@@ -499,7 +497,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator rewards")
 		queryStart := time.Now()
 
@@ -510,14 +508,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get validator rewards")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator rewards")
 
@@ -525,14 +523,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 			if value, err := strconv.ParseFloat(reward.Amount.String(), 64); err != nil {
 				sublogger.Error().
-					Str("address", validatorAddress.String()).
+					Str(labelAddress, validatorAddress.String()).
 					Err(err).
 					Msg("Could not get reward")
 			} else {
 				metrics.rewardsGauge.With(prometheus.Labels{
-					"address": validatorAddress.String(),
-					"moniker": moniker,
-					"denom":   config.Denom,
+					labelAddress: validatorAddress.String(),
+					labelMoniker: moniker,
+					labelDenom:   config.Denom,
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
@@ -543,7 +541,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator unbonding delegations")
 		queryStart := time.Now()
 
@@ -554,14 +552,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get validator unbonding delegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator unbonding delegations")
 
@@ -572,7 +570,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 				if err != nil {
 					log.Error().
 						Err(err).
-						Str("address", validatorAddress.String()).
+						Str(labelAddress, validatorAddress.String()).
 						Msg("Could not convert unbonding delegation entry")
 				} else {
 					sum += value
@@ -580,9 +578,9 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			}
 
 			metrics.unbondingsGauge.With(prometheus.Labels{
-				"address":     unbonding.ValidatorAddress,
-				"moniker":     moniker,
-				"denom":       config.Denom, // unbonding does not have denom in response for some reason
+				labelAddress:  unbonding.ValidatorAddress,
+				labelMoniker:  moniker,
+				labelDenom:    config.Denom, // unbonding does not have denom in response for some reason
 				"unbonded_by": unbonding.DelegatorAddress,
 			}).Set(sum / config.DenomCoefficient)
 		}
@@ -593,7 +591,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator redelegations")
 		queryStart := time.Now()
 
@@ -604,14 +602,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get redelegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator redelegations")
 
@@ -622,7 +620,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 				if err != nil {
 					log.Error().
 						Err(err).
-						Str("address", validatorAddress.String()).
+						Str(labelAddress, validatorAddress.String()).
 						Msg("Could not convert redelegation entry")
 				} else {
 					sum += value
@@ -630,11 +628,11 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 			}
 
 			metrics.redelegationsGauge.With(prometheus.Labels{
-				"address":        redelegation.Redelegation.ValidatorSrcAddress,
-				"moniker":        moniker,
-				"denom":          config.Denom, // redelegation does not have denom in response for some reason
-				"redelegated_by": redelegation.Redelegation.DelegatorAddress,
-				"redelegated_to": redelegation.Redelegation.ValidatorDstAddress,
+				labelAddress:       redelegation.Redelegation.ValidatorSrcAddress,
+				labelMoniker:       moniker,
+				labelDenom:         config.Denom, // redelegation does not have denom in response for some reason
+				"redelegated_by":   redelegation.Redelegation.DelegatorAddress,
+				labelRedelegatedTo: redelegation.Redelegation.ValidatorDstAddress,
 			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
@@ -644,7 +642,7 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator other validators")
 		queryStart := time.Now()
 
@@ -659,14 +657,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get other validators")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator other validators")
 
@@ -703,18 +701,18 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 
 		if validatorRank == 0 {
 			sublogger.Warn().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Msg("Could not find validator in validators list")
 			return
 		}
 
 		metrics.rankGauge.With(prometheus.Labels{
-			"moniker": moniker,
-			"address": validatorAddress.String(),
+			labelMoniker: moniker,
+			labelAddress: validatorAddress.String(),
 		}).Set(float64(validatorRank))
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Msg("Started querying validator params")
 		queryStart = time.Now()
 
@@ -724,14 +722,14 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", validatorAddress.String()).
+				Str(labelAddress, validatorAddress.String()).
 				Err(err).
 				Msg("Could not get params")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", validatorAddress.String()).
+			Str(labelAddress, validatorAddress.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying validator params")
 
@@ -745,8 +743,8 @@ func getValidatorExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, 
 		}
 
 		metrics.isActiveGauge.With(prometheus.Labels{
-			"address": validator.Validator.OperatorAddress,
-			"moniker": moniker,
+			labelAddress: validator.Validator.OperatorAddress,
+			labelMoniker: moniker,
 		}).Set(active)
 	}()
 }
@@ -757,11 +755,11 @@ func (s *Service) ValidatorHandler(w http.ResponseWriter, r *http.Request) {
 		Str("request-id", uuid.New().String()).
 		Logger()
 
-	address := r.URL.Query().Get("address")
+	address := r.URL.Query().Get(labelAddress)
 	myAddress, err := sdk.ValAddressFromBech32(address)
 	if err != nil {
 		sublogger.Error().
-			Str("address", address).
+			Str(labelAddress, address).
 			Err(err).
 			Msg("Could not get address")
 		return

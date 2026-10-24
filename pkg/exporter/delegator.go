@@ -22,11 +22,11 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 		Str("request-id", uuid.New().String()).
 		Logger()
 
-	validatorAddress := r.URL.Query().Get("validator_address")
+	validatorAddress := r.URL.Query().Get(labelValidatorAddress)
 	valAddress, err := sdk.ValAddressFromBech32(validatorAddress)
 	if err != nil {
 		sublogger.Error().
-			Str("validator_address", validatorAddress).
+			Str(labelValidatorAddress, validatorAddress).
 			Err(err).
 			Msg("Could not get validator address")
 		return
@@ -38,7 +38,7 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Number of delegators in validator",
 			ConstLabels: s.Config.ConstLabels,
 		},
-		[]string{"validator_address"},
+		[]string{labelValidatorAddress},
 	)
 
 	registry := prometheus.NewRegistry()
@@ -50,7 +50,7 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().
-			Str("validator_address", validatorAddress).
+			Str(labelValidatorAddress, validatorAddress).
 			Msg("Started querying delegator")
 		queryStart := time.Now()
 
@@ -66,19 +66,19 @@ func (s *Service) DelegatorHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("validator_address", validatorAddress).
+				Str(labelValidatorAddress, validatorAddress).
 				Err(err).
 				Msg("Could not get delegator")
 			return
 		}
 
 		sublogger.Debug().
-			Str("validator_address", validatorAddress).
+			Str(labelValidatorAddress, validatorAddress).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying delegators")
 
 		delegatorTotalGauge.With(prometheus.Labels{
-			"validator_address": validatorAddress,
+			labelValidatorAddress: validatorAddress,
 		}).Set(float64(len(delegatorRes.DelegationResponses)))
 	}()
 

@@ -39,7 +39,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Commission of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{labelAddress, labelMoniker},
 	)
 
 	validatorsStatusGauge := prometheus.NewGaugeVec(
@@ -48,7 +48,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Status of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{labelAddress, labelMoniker},
 	)
 
 	validatorsJailedGauge := prometheus.NewGaugeVec(
@@ -57,7 +57,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Jailed status of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{labelAddress, labelMoniker},
 	)
 
 	validatorsTokensGauge := prometheus.NewGaugeVec(
@@ -66,7 +66,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Tokens of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker", "denom"},
+		[]string{labelAddress, labelMoniker, labelDenom},
 	)
 
 	validatorsDelegatorSharesGauge := prometheus.NewGaugeVec(
@@ -75,7 +75,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Delegator shares of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker", "denom"},
+		[]string{labelAddress, labelMoniker, labelDenom},
 	)
 
 	validatorsMinSelfDelegationGauge := prometheus.NewGaugeVec(
@@ -84,7 +84,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Self declared minimum self delegation shares of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker", "denom"},
+		[]string{labelAddress, labelMoniker, labelDenom},
 	)
 
 	validatorsMissedBlocksGauge := prometheus.NewGaugeVec(
@@ -93,7 +93,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Missed blocks of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{labelAddress, labelMoniker},
 	)
 
 	validatorsRankGauge := prometheus.NewGaugeVec(
@@ -102,7 +102,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "Rank of the Cosmos-based blockchain validator",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "moniker"},
+		[]string{labelAddress, labelMoniker},
 	)
 
 	validatorsIsActiveGauge := prometheus.NewGaugeVec(
@@ -111,7 +111,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			Help:        "1 if the Cosmos-based blockchain validator is in active set, 0 if no",
 			ConstLabels: config.ConstLabels,
 		},
-		[]string{"address", "pubkey_hash", "moniker"},
+		[]string{labelAddress, "pubkey_hash", labelMoniker},
 	)
 
 	registry := prometheus.NewRegistry()
@@ -241,22 +241,22 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 	activeValidators := 0
 	for index, validator := range validators {
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-		rate, err := strconv.ParseFloat(validator.Commission.CommissionRates.Rate.String(), 64)
+		rate, err := strconv.ParseFloat(validator.Commission.Rate.String(), 64)
 		if err != nil {
 			log.Error().
 				Err(err).
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Msg("Could not get commission")
 		} else {
 			validatorsCommissionGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
+				labelAddress: validator.OperatorAddress,
+				labelMoniker: validator.Description.Moniker,
 			}).Set(rate)
 		}
 
 		validatorsStatusGauge.With(prometheus.Labels{
-			"address": validator.OperatorAddress,
-			"moniker": validator.Description.Moniker,
+			labelAddress: validator.OperatorAddress,
+			labelMoniker: validator.Description.Moniker,
 		}).Set(float64(validator.Status))
 
 		// golang doesn't have a ternary operator, so we have to stick with this ugly solution
@@ -268,56 +268,56 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			jailed = 0
 		}
 		validatorsJailedGauge.With(prometheus.Labels{
-			"address": validator.OperatorAddress,
-			"moniker": validator.Description.Moniker,
+			labelAddress: validator.OperatorAddress,
+			labelMoniker: validator.Description.Moniker,
 		}).Set(jailed)
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		if value, err := strconv.ParseFloat(validator.Tokens.String(), 64); err != nil {
 			sublogger.Error().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Err(err).
 				Msg("Could not parse delegator tokens")
 		} else {
 			validatorsTokensGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
-				"denom":   config.Denom,
+				labelAddress: validator.OperatorAddress,
+				labelMoniker: validator.Description.Moniker,
+				labelDenom:   config.Denom,
 			}).Set(value / config.DenomCoefficient) // a better way to do this is using math/big Div then checking IsInt64
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		if value, err := strconv.ParseFloat(validator.DelegatorShares.String(), 64); err != nil {
 			sublogger.Error().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Err(err).
 				Msg("Could not parse delegator shares")
 		} else {
 			validatorsDelegatorSharesGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
-				"denom":   config.Denom,
+				labelAddress: validator.OperatorAddress,
+				labelMoniker: validator.Description.Moniker,
+				labelDenom:   config.Denom,
 			}).Set(value / config.DenomCoefficient)
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		if value, err := strconv.ParseFloat(validator.MinSelfDelegation.String(), 64); err != nil {
 			sublogger.Error().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Err(err).
 				Msg("Could not parse validator min self delegation")
 		} else {
 			validatorsMinSelfDelegationGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
-				"denom":   config.Denom,
+				labelAddress: validator.OperatorAddress,
+				labelMoniker: validator.Description.Moniker,
+				labelDenom:   config.Denom,
 			}).Set(value / config.DenomCoefficient)
 		}
 
 		err = validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
 		if err != nil {
 			sublogger.Error().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Err(err).
 				Msg("Could not get unpack validator inferfaces")
 		}
@@ -325,14 +325,14 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := validator.GetConsAddr()
 		if err != nil {
 			sublogger.Error().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Err(err).
 				Msg("Could not get validator pubkey")
 		}
 		valcons, err := sdk.ConsAddressFromHex(hex.EncodeToString(pubKey))
 		if err != nil {
 			sublogger.Error().
-				Str("address", validator.String()).
+				Str(labelAddress, validator.String()).
 				Err(err).
 				Msg("Could not get validatorcons from ConsAddressFromHex")
 		}
@@ -356,7 +356,7 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			)
 			if err != nil {
 				sublogger.Debug().
-					Str("address", validator.OperatorAddress).
+					Str(labelAddress, validator.OperatorAddress).
 					Msg("Could not get signing info for validator")
 				continue
 			}
@@ -366,18 +366,18 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 
 		if found && (validator.Status == stakingtypes.Bonded) {
 			validatorsMissedBlocksGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
+				labelAddress: validator.OperatorAddress,
+				labelMoniker: validator.Description.Moniker,
 			}).Set(float64(signingInfo.MissedBlocksCounter))
 		} else {
 			sublogger.Trace().
-				Str("address", validator.OperatorAddress).
+				Str(labelAddress, validator.OperatorAddress).
 				Msg("Validator is not active, not returning missed blocks amount.")
 		}
 
 		validatorsRankGauge.With(prometheus.Labels{
-			"address": validator.OperatorAddress,
-			"moniker": validator.Description.Moniker,
+			labelAddress: validator.OperatorAddress,
+			labelMoniker: validator.Description.Moniker,
 		}).Set(float64(index + 1))
 
 		if validatorSetLength != 0 {
@@ -394,8 +394,8 @@ func (s *Service) ValidatorsHandler(w http.ResponseWriter, r *http.Request) {
 			activeValidators += int(active)
 
 			validatorsIsActiveGauge.With(prometheus.Labels{
-				"address":     validator.OperatorAddress,
-				"moniker":     validator.Description.Moniker,
+				labelAddress:  validator.OperatorAddress,
+				labelMoniker:  validator.Description.Moniker,
 				"pubkey_hash": strings.ToUpper(hex.EncodeToString(pubKey)),
 			}).Set(active)
 		}

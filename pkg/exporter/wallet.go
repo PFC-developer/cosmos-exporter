@@ -36,7 +36,7 @@ func NewWalletMetrics(reg prometheus.Registerer, config *ServiceConfig) *WalletM
 				Help:        "Balance of the Cosmos-based blockchain wallet",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "denom"},
+			[]string{labelAddress, labelDenom},
 		),
 	}
 	reg.MustRegister(m.balanceGauge)
@@ -52,7 +52,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) 
 				Help:        "Delegations of the Cosmos-based blockchain wallet",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "denom", "delegated_to"},
+			[]string{labelAddress, labelDenom, "delegated_to"},
 		),
 
 		redelegationGauge: prometheus.NewGaugeVec(
@@ -61,7 +61,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) 
 				Help:        "Redlegations of the Cosmos-based blockchain wallet",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "denom", "redelegated_from", "redelegated_to"},
+			[]string{labelAddress, labelDenom, "redelegated_from", labelRedelegatedTo},
 		),
 
 		unbondingsGauge: prometheus.NewGaugeVec(
@@ -70,7 +70,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) 
 				Help:        "Unbondings of the Cosmos-based blockchain wallet",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "denom", "unbonded_from"},
+			[]string{labelAddress, labelDenom, "unbonded_from"},
 		),
 
 		rewardsGauge: prometheus.NewGaugeVec(
@@ -79,7 +79,7 @@ func NewWalletExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig) 
 				Help:        "Rewards of the Cosmos-based blockchain wallet",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"address", "denom", "validator_address"},
+			[]string{labelAddress, labelDenom, labelValidatorAddress},
 		),
 	}
 
@@ -96,7 +96,7 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Msg("Started querying balance")
 		queryStart := time.Now()
 
@@ -109,14 +109,14 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 			)
 			if err != nil {
 				sublogger.Error().
-					Str("address", address.String()).
+					Str(labelAddress, address.String()).
 					Err(err).
 					Msg("Could not get balance")
 				return
 			}
 
 			sublogger.Debug().
-				Str("address", address.String()).
+				Str(labelAddress, address.String()).
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying all balances")
 
@@ -124,13 +124,13 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 				// because cosmos dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(balance.Amount.String(), 64); err != nil {
 					sublogger.Error().
-						Str("address", address.String()).
+						Str(labelAddress, address.String()).
 						Err(err).
 						Msg("Could not parse balance")
 				} else {
 					metrics.balanceGauge.With(prometheus.Labels{
-						"address": address.String(),
-						"denom":   balance.Denom,
+						labelAddress: address.String(),
+						labelDenom:   balance.Denom,
 					}).Set(value / config.DenomCoefficient)
 				}
 			}
@@ -141,15 +141,15 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 			)
 			if err != nil {
 				sublogger.Error().
-					Str("address", address.String()).
+					Str(labelAddress, address.String()).
 					Err(err).
 					Msg("Could not get balance")
 				return
 			}
 
 			sublogger.Debug().
-				Str("address", address.String()).
-				Str("denom", config.Denom).
+				Str(labelAddress, address.String()).
+				Str(labelDenom, config.Denom).
 				Float64("request-time", time.Since(queryStart).Seconds()).
 				Msg("Finished querying balance")
 			balance := bankRes.Balance
@@ -157,13 +157,13 @@ func GetWalletMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Wa
 			// because cosmos dec doesn't have .toFloat64() method or whatever and returns everything as int
 			if value, err := strconv.ParseFloat(balance.Amount.String(), 64); err != nil {
 				sublogger.Error().
-					Str("address", address.String()).
+					Str(labelAddress, address.String()).
 					Err(err).
 					Msg("Could not parse balance")
 			} else {
 				metrics.balanceGauge.With(prometheus.Labels{
-					"address": address.String(),
-					"denom":   balance.Denom,
+					labelAddress: address.String(),
+					labelDenom:   balance.Denom,
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
@@ -175,7 +175,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Msg("Started querying delegations")
 		queryStart := time.Now()
 
@@ -186,14 +186,14 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", address.String()).
+				Str(labelAddress, address.String()).
 				Err(err).
 				Msg("Could not get delegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying delegations")
 
@@ -201,13 +201,13 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 			if value, err := strconv.ParseFloat(delegation.Balance.Amount.String(), 64); err != nil {
 				sublogger.Error().
-					Str("address", address.String()).
+					Str(labelAddress, address.String()).
 					Err(err).
 					Msg("Could not get delegation")
 			} else {
 				metrics.delegationGauge.With(prometheus.Labels{
-					"address":      address.String(),
-					"denom":        config.Denom,
+					labelAddress:   address.String(),
+					labelDenom:     config.Denom,
 					"delegated_to": delegation.Delegation.ValidatorAddress,
 				}).Set(value / config.DenomCoefficient)
 			}
@@ -218,7 +218,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Msg("Started querying unbonding delegations")
 		queryStart := time.Now()
 
@@ -229,14 +229,14 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", address.String()).
+				Str(labelAddress, address.String()).
 				Err(err).
 				Msg("Could not get unbonding delegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying unbonding delegations")
 
@@ -246,7 +246,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(entry.Balance.String(), 64); err != nil {
 					sublogger.Error().
-						Str("address", address.String()).
+						Str(labelAddress, address.String()).
 						Err(err).
 						Msg("Could not parse unbonding delegation")
 				} else {
@@ -255,8 +255,8 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			}
 
 			metrics.unbondingsGauge.With(prometheus.Labels{
-				"address":       unbonding.DelegatorAddress,
-				"denom":         config.Denom, // unbonding does not have denom in response for some reason
+				labelAddress:    unbonding.DelegatorAddress,
+				labelDenom:      config.Denom, // unbonding does not have denom in response for some reason
 				"unbonded_from": unbonding.ValidatorAddress,
 			}).Set(sum / config.DenomCoefficient)
 		}
@@ -266,7 +266,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Msg("Started querying redelegations")
 		queryStart := time.Now()
 
@@ -277,14 +277,14 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", address.String()).
+				Str(labelAddress, address.String()).
 				Err(err).
 				Msg("Could not get redelegations")
 			return
 		}
 
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying redelegations")
 
@@ -294,7 +294,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(entry.Balance.String(), 64); err != nil {
 					sublogger.Error().
-						Str("address", address.String()).
+						Str(labelAddress, address.String()).
 						Err(err).
 						Msg("Could not parse redelegation")
 				} else {
@@ -303,10 +303,10 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 			}
 
 			metrics.redelegationGauge.With(prometheus.Labels{
-				"address":          redelegation.Redelegation.DelegatorAddress,
-				"denom":            config.Denom, // redelegation does not have denom in response for some reason
+				labelAddress:       redelegation.Redelegation.DelegatorAddress,
+				labelDenom:         config.Denom, // redelegation does not have denom in response for some reason
 				"redelegated_from": redelegation.Redelegation.ValidatorSrcAddress,
-				"redelegated_to":   redelegation.Redelegation.ValidatorDstAddress,
+				labelRedelegatedTo: redelegation.Redelegation.ValidatorDstAddress,
 			}).Set(sum / config.DenomCoefficient)
 		}
 	}()
@@ -316,7 +316,7 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		defer wg.Done()
 
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Msg("Started querying rewards")
 		queryStart := time.Now()
 
@@ -327,13 +327,13 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 		)
 		if err != nil {
 			sublogger.Error().
-				Str("address", address.String()).
+				Str(labelAddress, address.String()).
 				Err(err).
 				Msg("Could not get rewards")
 			return
 		}
 		sublogger.Debug().
-			Str("address", address.String()).
+			Str(labelAddress, address.String()).
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying rewards")
 
@@ -342,14 +342,14 @@ func getWalletExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, met
 				// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 				if value, err := strconv.ParseFloat(entry.Amount.String(), 64); err != nil {
 					sublogger.Error().
-						Str("address", address.String()).
+						Str(labelAddress, address.String()).
 						Err(err).
 						Msg("Could not parse reward")
 				} else {
 					metrics.rewardsGauge.With(prometheus.Labels{
-						"address":           address.String(),
-						"denom":             config.Denom,
-						"validator_address": reward.ValidatorAddress,
+						labelAddress:          address.String(),
+						labelDenom:            config.Denom,
+						labelValidatorAddress: reward.ValidatorAddress,
 					}).Set(value / config.DenomCoefficient)
 				}
 			}
@@ -364,11 +364,11 @@ func (s *Service) WalletHandler(w http.ResponseWriter, r *http.Request) {
 		Str("request-id", uuid.New().String()).
 		Logger()
 
-	address := r.URL.Query().Get("address")
+	address := r.URL.Query().Get(labelAddress)
 	myAddress, err := sdk.AccAddressFromBech32(address)
 	if err != nil {
 		sublogger.Error().
-			Str("address", address).
+			Str(labelAddress, address).
 			Err(err).
 			Msg("Could not get address")
 		return

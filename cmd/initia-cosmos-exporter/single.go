@@ -27,7 +27,7 @@ func InitiaSingleHandler(w http.ResponseWriter, r *http.Request, s *exporter.Ser
 	var paramsMetrics *exporter.ParamsMetrics
 	var upgradeMetrics *exporter.UpgradeMetrics
 	var walletMetrics *exporter.WalletMetrics
-	//var initiaOracleMetrics *InitiaMetrics
+	// var initiaOracleMetrics *InitiaMetrics
 	var proposalMetrics *exporter.ProposalsMetrics
 	var validatorVotingMetrics *exporter.ValidatorVotingMetrics
 

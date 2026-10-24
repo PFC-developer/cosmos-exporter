@@ -110,7 +110,7 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 				Help:        "default node info of the chain",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"network", "version", "moniker"},
+			[]string{"network", "version", labelMoniker},
 		),
 	}
 	reg.MustRegister(m.bondedTokensGauge)
@@ -148,7 +148,7 @@ func NewGeneralMetrics(reg prometheus.Registerer, config *ServiceConfig) *Genera
 				Help:        "Annual provisions",
 				ConstLabels: ConstLabels,
 			},
-			[]string{"denom"},
+			[]string{labelDenom},
 		)
 
 	*/
@@ -162,7 +162,7 @@ func NewGeneralExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig)
 				Help:        "Community pool",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"denom"},
+			[]string{labelDenom},
 		),
 		supplyTotalGauge: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -170,7 +170,7 @@ func NewGeneralExtendedMetrics(reg prometheus.Registerer, config *ServiceConfig)
 				Help:        "Total supply",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"denom"},
+			[]string{labelDenom},
 		),
 	}
 	reg.MustRegister(m.communityPoolGauge)
@@ -332,9 +332,9 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 		nodeinfo := response.GetDefaultNodeInfo()
 
 		metrics.defaultNodeInfo.With(prometheus.Labels{
-			"network": nodeinfo.Network,
-			"version": nodeinfo.Version,
-			"moniker": nodeinfo.Moniker,
+			"network":    nodeinfo.Network,
+			"version":    nodeinfo.Version,
+			labelMoniker: nodeinfo.Moniker,
 		}).Set(float64(1))
 	}()
 
@@ -395,7 +395,7 @@ func GetGeneralMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *G
 					Msg("Could not get annual provisions")
 			} else {
 				generalAnnualProvisions.With(prometheus.Labels{
-					"denom": Denom,
+					labelDenom: Denom,
 				}).Set(value / DenomCoefficient)
 			}
 		}()
@@ -471,7 +471,7 @@ func GetGeneralExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, me
 					Msg("Could not get community pool coin")
 			} else {
 				metrics.communityPoolGauge.With(prometheus.Labels{
-					"denom": config.Denom,
+					labelDenom: config.Denom,
 				}).Set(value / config.DenomCoefficient)
 			}
 		}
@@ -505,7 +505,7 @@ func GetGeneralExtendedMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, me
 						Msg("Could not get total supply")
 				} else {
 					metrics.supplyTotalGauge.With(prometheus.Labels{
-						"denom": coin.GetDenom(),
+						labelDenom: coin.GetDenom(),
 					}).Set(value)
 				}
 			}

@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	tmservice "github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/rs/zerolog"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 type ServiceConfig struct {
@@ -62,6 +62,7 @@ type ServiceConfig struct {
 
 type Service struct {
 	GrpcConn         *grpc.ClientConn
+	dialCancel       context.CancelFunc
 	ExternalGrpcConn *grpc.ClientConn
 	//	TmRPC      *tmrpc.HTTP
 	Wallets    []string
@@ -96,7 +97,8 @@ func (s *Service) SetChainID(config *ServiceConfig) {
 func (s *Service) Connect(config *ServiceConfig) error {
 	var err error
 	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	s.dialCancel = cancel
 	if strings.Contains(config.NodeAddress, ":443") {
 		creds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{}))
 	}
@@ -131,6 +133,9 @@ func (s *Service) Connect(config *ServiceConfig) error {
 }
 
 func (s *Service) Close() error {
+	if s.dialCancel != nil {
+		s.dialCancel()
+	}
 	err := s.GrpcConn.Close()
 	return err
 }
@@ -162,13 +167,13 @@ func (s *Service) SetDenom(config *ServiceConfig) {
 
 	for _, unit := range metadata.DenomUnits {
 		s.Log.Debug().
-			Str("denom", unit.Denom).
+			Str(labelDenom, unit.Denom).
 			Uint32("exponent", unit.Exponent).
 			Msg("Denom info")
 		if unit.Denom == config.Denom {
 			config.DenomCoefficient = math.Pow10(int(unit.Exponent))
 			s.Log.Info().
-				Str("denom", config.Denom).
+				Str(labelDenom, config.Denom).
 				Float64("coefficient", config.DenomCoefficient).
 				Msg("Got denom info")
 			return
@@ -186,16 +191,16 @@ func (s *Service) checkAndHandleDenomInfoProvidedByUser(config *ServiceConfig) b
 
 		if config.DenomCoefficient != 1 {
 			s.Log.Info().
-				Str("denom", config.Denom).
+				Str(labelDenom, config.Denom).
 				Float64("coefficient", config.DenomCoefficient).
 				Msg("Using provided denom and coefficient.")
 			return true
 		}
 
 		if config.DenomExponent != 0 {
-			config.DenomCoefficient = math.Pow10(int(config.DenomExponent))
+			config.DenomCoefficient = math.Pow10(int(config.DenomExponent)) // #nosec G115 -- denom exponents are small non-negative chain constants
 			s.Log.Info().
-				Str("denom", config.Denom).
+				Str(labelDenom, config.Denom).
 				Uint64("exponent", config.DenomExponent).
 				Float64("calculated coefficient", config.DenomCoefficient).
 				Msg("Using provided denom and denom exponent and calculating coefficient.")
@@ -225,7 +230,7 @@ func (s *Service) GetLatestBlock(conn *grpc.ClientConn) (float64, error) {
 
 func (config *ServiceConfig) SetCommonParameters(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&config.ConfigPath, "config", "", "Config file path")
-	cmd.PersistentFlags().StringVar(&config.Denom, "denom", "", "Cosmos coin denom")
+	cmd.PersistentFlags().StringVar(&config.Denom, labelDenom, "", "Cosmos coin denom")
 	cmd.PersistentFlags().Float64Var(&config.DenomCoefficient, "denom-coefficient", 1, "Denom coefficient")
 	cmd.PersistentFlags().Uint64Var(&config.DenomExponent, "denom-exponent", 0, "Denom exponent")
 	cmd.PersistentFlags().StringVar(&config.ListenAddress, "listen-address", ":9300", "The address this exporter would listen on")
@@ -284,6 +289,7 @@ func (config *ServiceConfig) LogConfig(event *zerolog.Event) *zerolog.Event {
 		Bool("--propv1", config.PropV1).
 		Bool("--votes", config.Votes)
 }
+
 func (config *ServiceConfig) SetIsInitia(flag bool) {
 	config.Initia = flag
 }

@@ -2,8 +2,8 @@
 package main
 
 import (
-	//"context"
-	//oracletypes "github.com/Team-Kujira/core/x/oracle/types"
+	// "context"
+	// oracletypes "github.com/Team-Kujira/core/x/oracle/types"
 	"net/http"
 	"sync"
 	"time"
@@ -23,8 +23,7 @@ import (
 		MissCount string `json:"miss_count"`
 	}
 */
-type InitiaMetrics struct {
-}
+type InitiaMetrics struct{}
 
 func NewInitiaMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig) *InitiaMetrics {
 	m := &InitiaMetrics{
@@ -41,7 +40,7 @@ func NewInitiaMetrics(reg prometheus.Registerer, config *exporter.ServiceConfig)
 		*/
 	}
 
-	//reg.MustRegister(m.votePenaltyCount)
+	// reg.MustRegister(m.votePenaltyCount)
 
 	return m
 }

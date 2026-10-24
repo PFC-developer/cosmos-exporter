@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -132,9 +133,10 @@ func Execute(_ *cobra.Command, _ []string) {
 		})
 	*/
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
-	err = http.ListenAndServe(config.ListenAddress, nil)
+	server := &http.Server{Addr: config.ListenAddress, ReadHeaderTimeout: 5 * time.Second}
+	err = server.ListenAndServe()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Fatal().Err(err).Msg("Could not start application") //nolint:gocritic // exitAfterDefer: process exits here; deferred Close() is best-effort
 	}
 }
 
@@ -146,6 +148,6 @@ func main() {
 	//	rootCmd.PersistentFlags().Float64Var(&config.BankTransferThreshold, "bank-transfer-threshold", 1e13, "The threshold for which to track bank transfers")
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Fatal().Err(err).Msg("Could not start application") //nolint:gocritic // exitAfterDefer: process exits here; deferred Close() is best-effort
 	}
 }

@@ -68,6 +68,24 @@ linters:
           disabled: true
         - name: defer
           disabled: true
+        # Rules below were added to revive/staticcheck after the v2.0 linter
+        # era this config targets; keep the historical behavior.
+        - name: use-waitgroup-go
+          disabled: true
+        - name: unnecessary-format
+          disabled: true
+        - name: unused-receiver
+          disabled: true
+        - name: import-alias-naming
+          disabled: true
+        - name: use-slices-sort
+          disabled: true
+        - name: bare-return
+          disabled: true
+        - name: package-naming
+          disabled: true
+        - name: comment-spacings
+          disabled: true
         - name: unused-parameter
           disabled: true
         - name: unhandled-error

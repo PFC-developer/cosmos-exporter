@@ -27,7 +27,7 @@ func NewUpgradeMetrics(reg prometheus.Registerer, config *ServiceConfig) *Upgrad
 				Help:        "Upgrade plan info in height",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"info", "name", "height", "estimated_time"},
+			[]string{labelInfo, labelName, labelHeight, labelEstimatedTime},
 		),
 	}
 	reg.MustRegister(m.upgradePlanGauge)
@@ -58,10 +58,10 @@ func DoUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Up
 
 		if upgradeRes.Plan == nil {
 			metrics.upgradePlanGauge.With(prometheus.Labels{
-				"info":           "None",
-				"name":           "None",
-				"height":         "",
-				"estimated_time": "",
+				labelInfo:          labelValueNone,
+				labelName:          labelValueNone,
+				labelHeight:        "",
+				labelEstimatedTime: "",
 			}).Set(0)
 			return
 		}
@@ -79,10 +79,10 @@ func DoUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Up
 
 		if remainingHeight <= 0 {
 			metrics.upgradePlanGauge.With(prometheus.Labels{
-				"info":           "None",
-				"name":           "None",
-				"height":         "",
-				"estimated_time": "",
+				labelInfo:          labelValueNone,
+				labelName:          labelValueNone,
+				labelHeight:        "",
+				labelEstimatedTime: "",
 			}).Set(0)
 			return
 		}
@@ -95,10 +95,10 @@ func DoUpgradeMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics *Up
 		}
 
 		metrics.upgradePlanGauge.With(prometheus.Labels{
-			"info":           upgradeRes.Plan.Info,
-			"name":           upgradeRes.Plan.Name,
-			"height":         strconv.FormatInt(upgradeHeight, 10),
-			"estimated_time": estimatedTime.Local().Format(time.RFC1123),
+			labelInfo:          upgradeRes.Plan.Info,
+			labelName:          upgradeRes.Plan.Name,
+			labelHeight:        strconv.FormatInt(upgradeHeight, 10),
+			labelEstimatedTime: estimatedTime.Local().Format(time.RFC1123),
 		}).Set(float64(remainingHeight))
 	}()
 }

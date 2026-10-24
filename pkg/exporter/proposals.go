@@ -41,7 +41,7 @@ func NewProposalsMetrics(reg prometheus.Registerer, config *ServiceConfig) *Prop
 				Help:        "Proposals of Cosmos-based blockchain",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"title", "status", "voting_start_time", "voting_end_time"},
+			[]string{labelTitle, labelStatus, labelVotingStartTime, labelVotingEndTime},
 		),
 	}
 	reg.MustRegister(m.proposalsGauge)
@@ -56,7 +56,7 @@ func NewValidatorVotingMetrics(reg prometheus.Registerer, config *ServiceConfig)
 				Help:        "Active Proposals of Cosmos-based blockchain, and how a validator voted",
 				ConstLabels: config.ConstLabels,
 			},
-			[]string{"id", "validator", "voted", "vote_option"},
+			[]string{"id", labelValidator, labelVoted, labelVoteOption},
 		),
 	}
 	reg.MustRegister(m.validatorVoting)
@@ -128,17 +128,17 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				}
 				if proposal.VotingStartTime == nil || proposal.VotingEndTime == nil {
 					metrics.proposalsGauge.With(prometheus.Labels{
-						"title":             title,
-						"status":            proposal.Status.String(),
-						"voting_start_time": "nil",
-						"voting_end_time":   "nil",
+						labelTitle:           title,
+						labelStatus:          proposal.Status.String(),
+						labelVotingStartTime: "nil",
+						labelVotingEndTime:   "nil",
 					}).Set(float64(proposal.Id))
 				} else {
 					metrics.proposalsGauge.With(prometheus.Labels{
-						"title":             title,
-						"status":            proposal.Status.String(),
-						"voting_start_time": proposal.VotingStartTime.String(),
-						"voting_end_time":   proposal.VotingEndTime.String(),
+						labelTitle:           title,
+						labelStatus:          proposal.Status.String(),
+						labelVotingStartTime: proposal.VotingStartTime.String(),
+						labelVotingEndTime:   proposal.VotingEndTime.String(),
 					}).Set(float64(proposal.Id))
 				}
 			}
@@ -193,10 +193,10 @@ func GetProposalsMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metrics 
 				}
 
 				metrics.proposalsGauge.With(prometheus.Labels{
-					"title":             content.Title,
-					"status":            proposal.Status.String(),
-					"voting_start_time": proposal.VotingStartTime.String(),
-					"voting_end_time":   proposal.VotingEndTime.String(),
+					labelTitle:           content.Title,
+					labelStatus:          proposal.Status.String(),
+					labelVotingStartTime: proposal.VotingStartTime.String(),
+					labelVotingEndTime:   proposal.VotingEndTime.String(),
 				}).Set(float64(proposal.ProposalId))
 
 			}
@@ -224,10 +224,10 @@ func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metr
 		)
 		if err != nil {
 			metrics.validatorVoting.With(prometheus.Labels{
-				"id":          fmt.Sprintf("%d", id),
-				"validator":   validator.String(),
-				"voted":       "no",
-				"vote_option": "NOT_VOTED",
+				"id":            fmt.Sprintf("%d", id),
+				labelValidator:  validator.String(),
+				labelVoted:      "no",
+				labelVoteOption: "NOT_VOTED",
 			}).Set(float64(0))
 
 			sublogger.Debug().Err(err).Msg("Could not get vote")
@@ -242,13 +242,13 @@ func GetProposalsVoteMetrics(wg *sync.WaitGroup, sublogger *zerolog.Logger, metr
 			Int("proposalsLength", len(proposals)).
 			Msg("Proposals info")
 
-		//	"id",  "validator", "vote", "vote_option"
+		//	"id",  labelValidator, "vote", labelVoteOption
 		for _, voteOption := range voteResponse.Vote.Options {
 			metrics.validatorVoting.With(prometheus.Labels{
-				"id":          fmt.Sprintf("%d", id),
-				"validator":   validator.String(),
-				"voted":       "yes",
-				"vote_option": voteOption.Option.String(),
+				"id":            fmt.Sprintf("%d", id),
+				labelValidator:  validator.String(),
+				labelVoted:      "yes",
+				labelVoteOption: voteOption.Option.String(),
 			}).Set(float64(voteOption.Size()))
 		}
 	}()

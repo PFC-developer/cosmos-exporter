@@ -141,7 +141,7 @@ func Execute(_ *cobra.Command, _ []string) {
 	log.Info().Str("address", config.ListenAddress).Msg("Listening")
 	err = http.ListenAndServe(config.ListenAddress, nil) // #nosec
 	if err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Fatal().Err(err).Msg("Could not start application") //nolint:gocritic // exitAfterDefer: process exits here; deferred Close() is best-effort
 	}
 }
 
@@ -151,6 +151,6 @@ func main() {
 	rootCmd.PersistentFlags().BoolVar(&config.Oracle, "oracle", false, "serve oracle info in the single call to /metrics")
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("Could not start application")
+		log.Fatal().Err(err).Msg("Could not start application") //nolint:gocritic // exitAfterDefer: process exits here; deferred Close() is best-effort
 	}
 }

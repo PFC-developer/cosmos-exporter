@@ -70,14 +70,14 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				sublogger.Error().
-					Str("address", validator).
+					Str(labelAddress, validator).
 					Err(err).
 					Msg("Could not get validator address")
 			} else {
 				val_wg.Add(1)
 				go func(validator string) {
 					defer val_wg.Done()
-					sublogger.Debug().Str("address", validator).Msg("Fetching validator details")
+					sublogger.Debug().Str(labelAddress, validator).Msg("Fetching validator details")
 
 					GetValidatorBasicMetrics(&wg, &sublogger, validatorMetrics, s, s.Config, valAddress)
 				}(validator)
@@ -121,7 +121,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 			valAddress, err := sdk.ValAddressFromBech32(validator)
 			if err != nil {
 				sublogger.Error().
-					Str("address", validator).
+					Str(labelAddress, validator).
 					Err(err).
 					Msg("Could not get validator address")
 			} else {
@@ -129,7 +129,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 				err := accAddress.Unmarshal(valAddress.Bytes())
 				if err != nil {
 					sublogger.Error().
-						Str("address", validator).
+						Str(labelAddress, validator).
 						Err(err).
 						Msg("Could not get acc address")
 				}
@@ -150,7 +150,7 @@ func (s *Service) SingleHandler(w http.ResponseWriter, r *http.Request) {
 			accAddress, err := sdk.AccAddressFromBech32(wallet)
 			if err != nil {
 				sublogger.Error().
-					Str("address", wallet).
+					Str(labelAddress, wallet).
 					Err(err).
 					Msg("Could not get wallet address")
 			} else {
