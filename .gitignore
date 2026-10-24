@@ -3,6 +3,7 @@ main
 dist/
 build/
 .gitignore
+/.golangci.bck.yml
 /.idea
 env.local
 /*run_it*sh
